@@ -16,7 +16,7 @@ from app.schemas.user import (
 from app.schemas.vital_signs import (
     VitalSignCreate,
     VitalSignResponse,
-    VitalSignListResponse
+    VitalSignsHistoryResponse
 )
 
 # Activity schemas
@@ -72,7 +72,7 @@ __all__ = [
     # Vital signs
     "VitalSignCreate",
     "VitalSignResponse",
-    "VitalSignListResponse",
+    "VitalSignsHistoryResponse",
     # Activity
     "ActivityType",
     "ActivityPhase",

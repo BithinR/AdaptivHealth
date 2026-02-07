@@ -120,10 +120,12 @@ async def update_my_profile(
     """
     # Only change fields the user actually sent.
     # Update fields
-    update_data = user_data.dict(exclude_unset=True)
+    update_data = user_data.model_dump(exclude_unset=True)
     
+    # Whitelist of fields users can update on their own profile
+    allowed_fields = {"name", "age", "gender", "phone"}
     for field, value in update_data.items():
-        if hasattr(current_user, field):
+        if field in allowed_fields and hasattr(current_user, field):
             setattr(current_user, field, value)
     
     # If age changes, update max heart rate too.
@@ -151,7 +153,7 @@ async def update_medical_history(
     """
     # Encrypt medical history before saving it.
     # Prepare medical data
-    medical_dict = medical_data.dict(exclude_unset=True)
+    medical_dict = medical_data.model_dump(exclude_unset=True)
     
     if medical_dict:
         # Encrypt the medical history
@@ -259,10 +261,12 @@ async def update_user(
         )
     
     # Update fields
-    update_data = user_data.dict(exclude_unset=True)
+    update_data = user_data.model_dump(exclude_unset=True)
     
+    # Whitelist of fields admins can update
+    allowed_fields = {"name", "age", "gender", "phone", "role", "is_active", "is_verified"}
     for field, value in update_data.items():
-        if hasattr(user, field):
+        if field in allowed_fields and hasattr(user, field):
             setattr(user, field, value)
     
     # Recalculate max HR if age changed
