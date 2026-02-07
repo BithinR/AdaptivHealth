@@ -50,12 +50,14 @@ def check_vitals_for_alerts(user_id: int, vital_data: VitalSignCreate):
     try:
         logger.info(f"Checking vitals for alerts: user {user_id}")
         
+        # Collect all alerts to create
+        alerts_to_create = []
+        
         # Check for high heart rate (critical threshold: >180 BPM)
         if vital_data.heart_rate > 180:
             logger.warning(f"High heart rate alert for user {user_id}: {vital_data.heart_rate} BPM")
             
-            # Create alert record
-            alert = Alert(
+            alerts_to_create.append(Alert(
                 user_id=user_id,
                 alert_type=AlertType.HIGH_HEART_RATE.value,
                 severity=SeverityLevel.CRITICAL.value,
@@ -68,17 +70,13 @@ def check_vitals_for_alerts(user_id: int, vital_data: VitalSignCreate):
                 is_sent_to_user=True,
                 is_sent_to_caregiver=True,
                 is_sent_to_clinician=True
-            )
-            db.add(alert)
-            db.commit()
-            logger.info(f"Created high heart rate alert {alert.alert_id} for user {user_id}")
+            ))
         
         # Check for low oxygen (critical threshold: <90%)
         if vital_data.spo2 and vital_data.spo2 < 90:
             logger.warning(f"Low oxygen alert for user {user_id}: {vital_data.spo2}%")
             
-            # Create alert record
-            alert = Alert(
+            alerts_to_create.append(Alert(
                 user_id=user_id,
                 alert_type=AlertType.LOW_SPO2.value,
                 severity=SeverityLevel.CRITICAL.value,
@@ -91,31 +89,35 @@ def check_vitals_for_alerts(user_id: int, vital_data: VitalSignCreate):
                 is_sent_to_user=True,
                 is_sent_to_caregiver=True,
                 is_sent_to_clinician=True
-            )
-            db.add(alert)
-            db.commit()
-            logger.info(f"Created low oxygen alert {alert.alert_id} for user {user_id}")
+            ))
         
         # Check for high blood pressure (warning threshold: systolic >160 or diastolic >100)
         if vital_data.blood_pressure_systolic and vital_data.blood_pressure_systolic > 160:
             logger.warning(f"High blood pressure alert for user {user_id}: {vital_data.blood_pressure_systolic}/{vital_data.blood_pressure_diastolic} mmHg")
             
-            alert = Alert(
+            # Include both systolic and diastolic in trigger value for context
+            bp_display = f"{vital_data.blood_pressure_systolic}/{vital_data.blood_pressure_diastolic or 'N/A'} mmHg"
+            
+            alerts_to_create.append(Alert(
                 user_id=user_id,
                 alert_type=AlertType.HIGH_BLOOD_PRESSURE.value,
                 severity=SeverityLevel.WARNING.value,
                 title="Elevated Blood Pressure",
                 message=f"Systolic blood pressure of {vital_data.blood_pressure_systolic} mmHg exceeds threshold",
                 action_required="Monitor blood pressure and consult healthcare provider if elevated readings persist.",
-                trigger_value=f"{vital_data.blood_pressure_systolic}/{vital_data.blood_pressure_diastolic or 'N/A'} mmHg",
+                trigger_value=bp_display,
                 threshold_value="160/100 mmHg",
                 acknowledged=False,
                 is_sent_to_user=True,
                 is_sent_to_clinician=True
-            )
-            db.add(alert)
+            ))
+        
+        # Bulk insert all alerts in a single transaction
+        if alerts_to_create:
+            db.add_all(alerts_to_create)
             db.commit()
-            logger.info(f"Created high blood pressure alert {alert.alert_id} for user {user_id}")
+            logger.info(f"Created {len(alerts_to_create)} alert(s) for user {user_id}")
+            
     finally:
         db.close()
 

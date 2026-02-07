@@ -392,18 +392,22 @@ async def request_password_reset(
             expires_delta=timedelta(hours=1)
         )
         
-        logger.info(f"Password reset requested for: {reset_data.email}")
-        logger.info(f"Reset token (would be sent via email): {reset_token}")
+        # Log token for development only (DO NOT do this in production)
+        # In production, send via email instead
+        from app.config import settings
+        if settings.environment == "development" or settings.debug:
+            logger.info(f"Password reset requested for: {reset_data.email}")
+            logger.info(f"Reset token (DEV ONLY - would be sent via email): {reset_token}")
+        else:
+            logger.info(f"Password reset requested for: {reset_data.email}")
         
         # In production, this would send an email with the reset link
         # Example: https://app.adaptivhealth.com/reset-password?token={reset_token}
-        # For now, we log the token for testing purposes
         # background_tasks.add_task(send_reset_email, user.email, reset_token)
     
     # Always return success to prevent email enumeration
     return {
-        "message": "If the email exists, a reset link has been sent",
-        "token": reset_token if user else None  # Only for development/testing
+        "message": "If the email exists, a reset link has been sent"
     }
 
 
