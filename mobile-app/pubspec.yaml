@@ -23,6 +23,7 @@ dependencies:
 
   # Networking
   dio: ^5.4.0                       # HTTP client (like axios)
+  flutter_secure_storage: ^9.0.0   # Secure token storage
 
   # Charts
   fl_chart: ^0.68.0                 # Heart rate graphs
