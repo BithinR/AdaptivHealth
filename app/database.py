@@ -1,10 +1,8 @@
 """
-=============================================================================
-ADAPTIV HEALTH - Database Configuration
-=============================================================================
-Sets up SQLAlchemy connection to PostgreSQL.
-Implements connection pooling and session management for high performance.
-=============================================================================
+Database setup.
+
+Connects to PostgreSQL and manages database sessions.
+Uses connection pooling to reuse connections efficiently.
 """
 
 from sqlalchemy import create_engine, event, text
@@ -28,18 +26,26 @@ logger = logging.getLogger(__name__)
 # pool_size: Number of persistent connections in the pool
 # max_overflow: Additional connections allowed during high load
 # pool_recycle: Recycle connections after this many seconds (prevents timeouts)
-engine = create_engine(
-    settings.database_url,
-    poolclass=QueuePool,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-    pool_recycle=3600,  # Recycle connections after 1 hour
-    echo=settings.debug,  # Log SQL queries in debug mode
-    connect_args={} if "sqlite" in settings.database_url else {
-        "options": "-c timezone=utc"  # Force UTC timezone for PostgreSQL
-    }
-)
+# Build engine args based on database type
+if "sqlite" in settings.database_url:
+    # SQLite doesn't support connection pooling
+    engine = create_engine(
+        settings.database_url,
+        echo=settings.debug,
+        connect_args={"check_same_thread": False}
+    )
+else:
+    # PostgreSQL with connection pooling for AWS RDS
+    engine = create_engine(
+        settings.database_url,
+        poolclass=QueuePool,
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
+        pool_recycle=3600,
+        echo=settings.debug,
+        connect_args={"options": "-c timezone=utc"}
+    )
 
 # =============================================================================
 # Session Factory

@@ -1,10 +1,9 @@
 """
-=============================================================================
-ADAPTIV HEALTH - Vital Signs Schemas
-=============================================================================
-Pydantic schemas for vital signs API requests and responses.
-Handles validation and serialization of cardiovascular data.
-=============================================================================
+Vital signs data validation.
+
+Defines what heart rate, blood pressure, and other vital sign data
+looks like when sent to the API. Checks that all numbers are reasonable
+(like heart rate is between 30 and 250 BPM).
 """
 
 from pydantic import BaseModel, Field, field_validator
@@ -32,12 +31,14 @@ class VitalSignBase(BaseModel):
     
     @field_validator('blood_pressure_systolic', 'blood_pressure_diastolic')
     def validate_blood_pressure(cls, v):
+        # Blood pressure must be positive.
         if v is not None and v <= 0:
             raise ValueError('Blood pressure must be positive')
         return v
     
     @field_validator('spo2')
     def validate_spo2(cls, v):
+        # SpO2 must be between 0 and 100.
         if v is not None and (v < 0 or v > 100):
             raise ValueError('SpO2 must be between 0 and 100')
         return v

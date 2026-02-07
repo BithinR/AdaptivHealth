@@ -1,10 +1,9 @@
 """
-=============================================================================
-ADAPTIV HEALTH - User Schemas
-=============================================================================
-Pydantic schemas for user-related API requests and responses.
-Implements data validation and serialization for user management.
-=============================================================================
+User data validation.
+
+Defines what user information can be sent to the API and what
+the API sends back. Checks that data is valid (like email is
+formatted correctly, age is reasonable, etc.).
 """
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -30,6 +29,7 @@ class UserBase(BaseModel):
     
     @field_validator('gender')
     def validate_gender(cls, v):
+        # Keep gender values consistent.
         if v is not None:
             allowed = ['male', 'female', 'other', 'prefer not to say']
             if v.lower() not in allowed:
@@ -55,6 +55,7 @@ class UserCreate(UserBase):
         Basic password strength validation.
         In production, consider more sophisticated checks.
         """
+        # Simple rules so passwords are not too weak.
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters long')
         if not any(char.isdigit() for char in v):
@@ -80,6 +81,7 @@ class UserUpdate(BaseModel):
     
     @field_validator('gender')
     def validate_gender(cls, v):
+        # Same validation as UserBase for consistency across endpoints
         if v is not None:
             allowed = ['male', 'female', 'other', 'prefer not to say']
             if v.lower() not in allowed:

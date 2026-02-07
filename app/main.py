@@ -1,17 +1,8 @@
 """
-=============================================================================
-ADAPTIV HEALTH - Main Application
-=============================================================================
-FastAPI application entry point with CORS, middleware, and route configuration.
-Implements HIPAA-compliant health monitoring API.
+Main app entry point.
 
-Features:
-- FastAPI with automatic OpenAPI documentation
-- CORS support for web dashboard
-- Rate limiting and security middleware
-- Structured logging
-- Health checks and monitoring
-=============================================================================
+Starts the server, sets up security rules, connects to the database,
+and loads the AI model. Also handles startup and shutdown events.
 """
 
 from fastapi import FastAPI, Request, HTTPException
@@ -24,7 +15,7 @@ from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.database import init_db, check_db_connection
-from app.api import auth, user, vital_signs
+from app.api import auth, user, vital_signs, predict
 
 # Configure logging
 logging.basicConfig(
@@ -60,6 +51,17 @@ async def lifespan(app: FastAPI):
     if not check_db_connection():
         logger.error("Database connection check failed")
         raise RuntimeError("Cannot connect to database")
+    
+    # Load ML model (Massoud's trained Random Forest)
+    try:
+        from app.services.ml_prediction import get_ml_service
+        ml_service = get_ml_service()
+        if ml_service.is_loaded:
+            logger.info("ML model loaded successfully")
+        else:
+            logger.warning("ML model not loaded - prediction endpoints will be unavailable")
+    except Exception as e:
+        logger.warning(f"ML model loading failed (non-fatal): {e}")
     
     logger.info("Adaptive Health API started successfully")
     
@@ -101,7 +103,13 @@ app.add_middleware(
 if not settings.debug:
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=["*"]  # Configure for production
+        allowed_hosts=[
+            "api.adaptivhealth.com",
+            "adaptivhealth.com",
+            "dashboard.adaptivhealth.com",
+            "localhost",
+            "127.0.0.1"
+        ]
     )
 
 
@@ -208,6 +216,13 @@ app.include_router(
     vital_signs.router,
     prefix="/api/v1",
     tags=["Vital Signs"]
+)
+
+# ML Prediction routes
+app.include_router(
+    predict.router,
+    prefix="/api/v1",
+    tags=["AI Risk Prediction"]
 )
 
 

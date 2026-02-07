@@ -1,13 +1,12 @@
 """
-=============================================================================
-ADAPTIV HEALTH - Database Models Package
-=============================================================================
-SQLAlchemy ORM models for the Adaptiv Health system.
-Based on Data Dictionary from Design Document Section 4.1.
-=============================================================================
+Database tables (models).
+
+Defines the structure of all tables in the database: users, vital signs,
+alerts, recommendations, etc.
 """
 
 from app.models.user import User, UserRole
+from app.models.auth_credential import AuthCredential
 from app.models.vital_signs import VitalSignRecord
 from app.models.activity import ActivitySession, ActivityType, ActivityPhase
 from app.models.risk_assessment import RiskAssessment, RiskLevel
@@ -16,9 +15,10 @@ from app.models.recommendation import ExerciseRecommendation, IntensityLevel, Re
 
 # Export all models for easy importing
 __all__ = [
-    # User
+    # User & Auth
     "User",
     "UserRole",
+    "AuthCredential",
     
     # Vital Signs
     "VitalSignRecord",

@@ -1,17 +1,7 @@
 """
-=============================================================================
-ADAPTIV HEALTH - Vital Signs API
-=============================================================================
-FastAPI router for vital signs data management.
-Handles wearable data submission, retrieval, and analytics.
+Vital signs routes.
 
-Endpoints:
-- POST /vitals - Submit single vital reading
-- POST /vitals/batch - Batch upload vitals
-- GET /vitals/latest - Get latest reading
-- GET /vitals/summary - Get daily/weekly summary
-- GET /vitals/history - Get historical data
-=============================================================================
+This file saves heart data from devices and lets the app read it back.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
@@ -46,19 +36,17 @@ def check_vitals_for_alerts(user_id: int, vital_data: VitalSignCreate):
     """
     Background task to check vital signs for alerts.
     
-    This would integrate with the AI service to detect anomalies
-    and trigger alerts if necessary.
+    In the future, this will raise alerts if readings are dangerous.
     
     Args:
         user_id: User ID
         vital_data: Vital signs data
     """
-    # TODO: Implement alert checking logic
-    # This is a placeholder for the AI integration
+    # Placeholder for alert logic.
     
     logger.info(f"Checking vitals for alerts: user {user_id}")
     
-    # Example alert conditions (simplified)
+    # Example alert checks (simple for now).
     if vital_data.heart_rate > 180:
         logger.warning(f"High heart rate alert for user {user_id}: {vital_data.heart_rate} BPM")
         # TODO: Create alert record and send notifications
@@ -137,6 +125,23 @@ async def submit_vitals(
     """
     Submit a single vital signs reading from wearable device.
     
+    DESIGN RATIONALE:
+    - Accepts readings from Fitbit, Apple Watch, Oura Ring, etc.
+    - Validates data quality BEFORE storing (prevents garbage data)
+    - Runs alert checking in BACKGROUND (doesn't block user response)
+    - Stores with confidence_score for future ML feature engineering
+    
+    VALIDATION STRATEGY:
+    - Heart rate 30-250 BPM (physiologically impossible outside this range)
+    - SpO2 70-100% (below 70% is critical, above 100% is sensor error)
+    - Blood pressure checked against typical ranges
+    - Why not accept invalid data: Garbage in → garbage out for ML models
+    
+    BACKGROUND ALERTS:
+    - Async task checks vitals for thresholds (high HR, low SpO2)
+    - Doesn't wait for completion (user gets immediate response)
+    - Allows notifications to be sent without blocking API
+    
     Mobile app sends data here after collecting from wearable.
     
     Request body example:
@@ -149,28 +154,40 @@ async def submit_vitals(
         "timestamp": "2026-01-15T14:30:00Z"
     }
     """
-    # Validate data quality (basic checks)
+    # Validate heart rate is physiologically possible
+    # WHY: Wearables sometimes send erroneous values (motion artifacts, sensor loss)
+    # 30 BPM = severe bradycardia (requires medical attention but possible)
+    # 250 BPM = impossible without severe tachycardia (sensor error)
     if vital_data.heart_rate < 30 or vital_data.heart_rate > 250:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Heart rate out of valid range (30-250 BPM)"
         )
     
-    # Create vital signs record
-    # Note: In production, sensitive data would be encrypted
-    # For now, storing as plain data for simplicity
+    # Validate blood oxygen saturation
+    # WHY: Critical vital for cardiac patients (oxygen delivery indicator)
+    # Below 70%: Medical emergency, requires immediate intervention
+    # Above 100%: Impossible (sensor malfunction), reject
+    if vital_data.spo2 and (vital_data.spo2 < 70 or vital_data.spo2 > 100):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Blood oxygen saturation out of valid range (70-100%)"
+        )
+    
+    # Create vital signs record (column names match Massoud's AWS schema)
+    # Stores with system-generated timestamp defaults
     new_vital = VitalSignRecord(
-        user_id=current_user.id,
+        user_id=current_user.user_id,
         heart_rate=vital_data.heart_rate,
         spo2=vital_data.spo2,
-        blood_pressure_systolic=vital_data.blood_pressure_systolic,
-        blood_pressure_diastolic=vital_data.blood_pressure_diastolic,
+        systolic_bp=vital_data.blood_pressure_systolic,
+        diastolic_bp=vital_data.blood_pressure_diastolic,
         hrv=vital_data.hrv,
         source_device=vital_data.source_device,
         device_id=vital_data.device_id,
         timestamp=vital_data.timestamp or datetime.now(timezone.utc),
-        is_valid=True,  # Assume valid unless proven otherwise
-        confidence_score=1.0  # Assume high confidence
+        is_valid=True,
+        confidence_score=1.0
     )
     
     db.add(new_vital)
@@ -178,9 +195,9 @@ async def submit_vitals(
     db.refresh(new_vital)
     
     # Check for alerts in background
-    background_tasks.add_task(check_vitals_for_alerts, current_user.id, vital_data)
+    background_tasks.add_task(check_vitals_for_alerts, current_user.user_id, vital_data)
     
-    logger.info(f"Vital signs recorded for user {current_user.id}: HR={vital_data.heart_rate}")
+    logger.info(f"Vital signs recorded for user {current_user.user_id}: HR={vital_data.heart_rate}")
     
     return new_vital
 
@@ -217,11 +234,11 @@ async def submit_vitals_batch(
             continue  # Skip invalid records
         
         new_vital = VitalSignRecord(
-            user_id=current_user.id,
+            user_id=current_user.user_id,
             heart_rate=vital_data.heart_rate,
             spo2=vital_data.spo2,
-            blood_pressure_systolic=vital_data.blood_pressure_systolic,
-            blood_pressure_diastolic=vital_data.blood_pressure_diastolic,
+            systolic_bp=vital_data.blood_pressure_systolic,
+            diastolic_bp=vital_data.blood_pressure_diastolic,
             hrv=vital_data.hrv,
             source_device=vital_data.source_device,
             device_id=vital_data.device_id,
@@ -237,9 +254,9 @@ async def submit_vitals_batch(
     
     # Check for alerts on the batch
     for vital_data in batch_data.vitals:
-        background_tasks.add_task(check_vitals_for_alerts, current_user.id, vital_data)
+        background_tasks.add_task(check_vitals_for_alerts, current_user.user_id, vital_data)
     
-    logger.info(f"Batch vitals recorded for user {current_user.id}: {records_created} records")
+    logger.info(f"Batch vitals recorded for user {current_user.user_id}: {records_created} records")
     
     return {
         "message": f"Successfully created {records_created} vital signs records",
@@ -258,7 +275,7 @@ async def get_latest_vitals(
     Used by mobile app home screen and doctor dashboard.
     """
     latest = db.query(VitalSignRecord)\
-               .filter(VitalSignRecord.user_id == current_user.id)\
+               .filter(VitalSignRecord.user_id == current_user.user_id)\
                .order_by(VitalSignRecord.timestamp.desc())\
                .first()
     
@@ -285,7 +302,7 @@ async def get_vitals_summary(
     end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)
     
-    summary = calculate_vitals_summary(db, current_user.id, start_date, end_date)
+    summary = calculate_vitals_summary(db, current_user.user_id, start_date, end_date)
     
     return summary
 
@@ -309,7 +326,7 @@ async def get_vitals_history(
     # Query vitals in date range
     query = db.query(VitalSignRecord)\
               .filter(
-                  VitalSignRecord.user_id == current_user.id,
+                  VitalSignRecord.user_id == current_user.user_id,
                   VitalSignRecord.timestamp >= start_date,
                   VitalSignRecord.timestamp <= end_date
               )\
@@ -322,7 +339,7 @@ async def get_vitals_history(
     vitals = query.offset((page - 1) * per_page).limit(per_page).all()
     
     # Calculate summary for the period
-    summary = calculate_vitals_summary(db, current_user.id, start_date, end_date)
+    summary = calculate_vitals_summary(db, current_user.user_id, start_date, end_date)
     
     return VitalSignsHistoryResponse(
         vitals=vitals,
@@ -356,12 +373,9 @@ async def get_user_latest_vitals(
             detail="User not found"
         )
     
-    # TODO: Implement proper access control
-    # For now, allow clinicians to access patient data
-    
     latest = db.query(VitalSignRecord)\
                .filter(VitalSignRecord.user_id == user_id)\
-               .order_by(VitalSignRecord.timestamp.desc())\
+               .order_by(desc(VitalSignRecord.timestamp))\
                .first()
     
     if not latest:

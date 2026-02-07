@@ -1,15 +1,9 @@
 """
-=============================================================================
-ADAPTIV HEALTH - Configuration Settings
-=============================================================================
-Centralized application configuration using pydantic-settings.
+Application settings.
 
-Design principles:
-- Clear separation of concerns
-- Secure defaults
-- Minimal over-engineering
-- Compatible with local development and AWS deployment
-=============================================================================
+Loads all configuration variables (database, security, API keys) from
+environment variables. Makes the app work in different places
+(local computer, testing server, or AWS cloud).
 """
 
 from functools import lru_cache

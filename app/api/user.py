@@ -56,7 +56,8 @@ def can_access_user(current_user: User, target_user: User) -> bool:
     Returns:
         True if access is allowed
     """
-    if current_user.id == target_user.id:
+    # Check the simplest rule first: users can see their own data.
+    if current_user.user_id == target_user.user_id:
         return True
     
     if current_user.role == UserRole.ADMIN:
@@ -83,6 +84,7 @@ async def get_my_profile(current_user: User = Depends(get_current_user)):
     
     Returns basic profile data plus calculated heart rate zones.
     """
+    # Calculate heart-rate zones when needed so they stay up to date.
     # Calculate heart rate zones
     hr_zones = current_user.get_heart_rate_zones() if current_user.age else None
     
@@ -113,6 +115,7 @@ async def update_my_profile(
     
     Only allows updating safe profile fields.
     """
+    # Only change fields the user actually sent.
     # Update fields
     update_data = user_data.dict(exclude_unset=True)
     
@@ -120,7 +123,7 @@ async def update_my_profile(
         if hasattr(current_user, field):
             setattr(current_user, field, value)
     
-    # Recalculate max HR if age changed
+    # If age changes, update max heart rate too.
     if 'age' in update_data and current_user.age:
         current_user.max_heart_rate = current_user.calculate_max_heart_rate()
     
@@ -143,6 +146,7 @@ async def update_medical_history(
     
     Medical data is encrypted before storage for HIPAA compliance.
     """
+    # Encrypt medical history before saving it.
     # Prepare medical data
     medical_dict = medical_data.dict(exclude_unset=True)
     
@@ -176,6 +180,7 @@ async def list_users(
     
     Admin/Clinician access only.
     """
+    # Build the query and apply any filters.
     query = db.query(User)
     
     # Apply filters
@@ -188,7 +193,7 @@ async def list_users(
             (User.name.ilike(search_filter)) | (User.email.ilike(search_filter))
         )
     
-    # Get total count
+    # Count total results for pagination.
     total = query.count()
     
     # Apply pagination
@@ -334,7 +339,7 @@ async def deactivate_user(
             detail="User not found"
         )
     
-    if user.id == current_user.id:
+    if user.user_id == current_user.user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot deactivate your own account"

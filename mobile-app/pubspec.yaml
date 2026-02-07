@@ -1,0 +1,41 @@
+name: adaptiv_health
+description: "Medical-grade cardiovascular monitoring mobile app for iOS and Android."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI & Design
+  google_fonts: ^6.1.0              # DM Sans typography
+  lucide_icons: ^0.257.0            # Icon system
+
+  # Navigation
+  go_router: ^14.0.0                # Declarative routing
+
+  # State Management
+  provider: ^6.1.0                  # Simple state management
+
+  # Networking
+  dio: ^5.4.0                       # HTTP client (like axios)
+
+  # Charts
+  fl_chart: ^0.68.0                 # Heart rate graphs
+
+  # Utilities
+  intl: ^0.19.0                     # Date/number formatting
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

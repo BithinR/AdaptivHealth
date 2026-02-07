@@ -1,25 +1,14 @@
 """
-=============================================================================
-ADAPTIV HEALTH - Authentication Service
-=============================================================================
-Implements OAuth 2.0 with JWT tokens for secure authentication.
-Includes password hashing, token management, and RBAC support.
+Authentication helpers.
 
-Security Features (HIPAA/SRS Requirements):
-- Bcrypt password hashing
-- JWT access and refresh tokens
-- Account lockout after failed attempts
-- Role-based access control
-- Session timeout enforcement
-=============================================================================
+This file handles password hashing and token creation.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Callable
+from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, status
+from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import logging
 
@@ -34,25 +23,24 @@ logger = logging.getLogger(__name__)
 # Password Hashing Configuration
 # =============================================================================
 
-# bcrypt is the recommended algorithm for password hashing
-# It automatically handles salt generation and is resistant to rainbow table attacks
+# Use PBKDF2 for password hashing (safe and compatible).
 pwd_context = CryptContext(
-    schemes=["bcrypt"],
+    schemes=["pbkdf2_sha256"],
     deprecated="auto",
-    bcrypt__rounds=12  # Cost factor - higher = more secure but slower
+    pbkdf2_sha256__default_rounds=200000  # OWASP recommended minimum
 )
 
 # =============================================================================
 # OAuth2 Scheme
 # =============================================================================
 
-# OAuth2 scheme for token extraction from Authorization header
+# Read login tokens from the Authorization header.
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/api/v1/auth/login",
     auto_error=True
 )
 
-# Optional OAuth2 scheme (doesn't raise error if no token)
+# Optional token reader (no error if missing).
 oauth2_scheme_optional = OAuth2PasswordBearer(
     tokenUrl="/api/v1/auth/login",
     auto_error=False
@@ -79,27 +67,30 @@ class AuthService:
     @staticmethod
     def hash_password(password: str) -> str:
         """
-        Hash a plain password using bcrypt.
+        Hash a password so it is safe to store.
+        
+        We use PBKDF2 with many rounds to make guessing very slow.
         
         Args:
-            password: Plain text password
+            password: Plain text password to hash
             
         Returns:
-            Hashed password string
+            Hashed password string suitable for storage in auth_credentials table
         """
         return pwd_context.hash(password)
     
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """
-        Verify a password against its hash.
+                Check if the password matches what we stored.
+                If anything goes wrong, return False.
         
         Args:
-            plain_password: Password to verify
-            hashed_password: Stored hash to compare against
+            plain_password: User's input password
+            hashed_password: Stored hash from auth_credentials.password_hash
             
         Returns:
-            True if password matches, False otherwise
+            True if password matches hash, False if mismatch or error
         """
         try:
             return pwd_context.verify(plain_password, hashed_password)
@@ -117,32 +108,36 @@ class AuthService:
         expires_delta: Optional[timedelta] = None
     ) -> str:
         """
-        Create a JWT access token.
+        Create a short-lived login token.
+        It lets the app call protected APIs for a limited time.
         
         Args:
-            data: Payload data (usually contains user_id and role)
-            expires_delta: Optional custom expiration time
+            data: Claims to include in token (typically {"user_id": X, "role": "patient"})
+            expires_delta: Optional custom expiration (for testing or special cases)
             
         Returns:
-            Encoded JWT token string
+            Encoded JWT token string ready for Authorization header
         """
         to_encode = data.copy()
         
-        # Set expiration time
+        # Set expiration time for the token.
         if expires_delta:
+            # Custom expiration (used for password reset tokens, etc.)
             expire = datetime.now(timezone.utc) + expires_delta
         else:
+            # Default access token lifetime (30 minutes).
             expire = datetime.now(timezone.utc) + timedelta(
                 minutes=settings.access_token_expire_minutes
             )
         
+        # Add standard fields.
         to_encode.update({
-            "exp": expire,
-            "iat": datetime.now(timezone.utc),
-            "type": "access"
+            "exp": expire,  # Expiration time (unix timestamp)
+            "iat": datetime.now(timezone.utc),  # Issued-at time
+            "type": "access"  # Token type marker
         })
         
-        # Encode the token
+        # Encode the token with the app's secret key.
         encoded_jwt = jwt.encode(
             to_encode,
             settings.secret_key,
@@ -155,25 +150,29 @@ class AuthService:
     def create_refresh_token(data: dict) -> str:
         """
         Create a longer-lived refresh token.
+        This lets users stay logged in without typing passwords often.
         
         Args:
-            data: Payload data
+            data: Claims to include (user_id, role)
             
         Returns:
-            Encoded JWT refresh token
+            Encoded JWT refresh token string
         """
         to_encode = data.copy()
         
+        # Refresh tokens live longer than access tokens.
         expire = datetime.now(timezone.utc) + timedelta(
             days=settings.refresh_token_expire_days
         )
         
+        # Add standard fields.
         to_encode.update({
             "exp": expire,
             "iat": datetime.now(timezone.utc),
-            "type": "refresh"
+            "type": "refresh"  # Mark as refresh token (not reusable as access token)
         })
         
+        # Encode and return the token.
         return jwt.encode(
             to_encode,
             settings.secret_key,
@@ -183,15 +182,17 @@ class AuthService:
     @staticmethod
     def decode_token(token: str) -> Optional[dict]:
         """
-        Decode and validate a JWT token.
+        Decode a token and check if it is still valid.
+        Returns None if the token is expired or broken.
         
         Args:
-            token: JWT token string
+            token: JWT token string from Authorization header (typically \"Bearer token\")
             
         Returns:
-            Decoded payload or None if invalid
+            Decoded payload dict if valid, None if expired/invalid/tampered
         """
         try:
+            # Decode and validate the token.
             payload = jwt.decode(
                 token,
                 settings.secret_key,
@@ -199,6 +200,7 @@ class AuthService:
             )
             return payload
         except JWTError as e:
+            # Token is invalid or expired.
             logger.warning(f"JWT decode error: {e}")
             return None
     

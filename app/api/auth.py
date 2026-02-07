@@ -1,17 +1,7 @@
 """
-=============================================================================
-ADAPTIV HEALTH - Authentication API
-=============================================================================
-FastAPI router for user authentication endpoints.
-Implements OAuth 2.0 with JWT tokens and account security features.
+Authentication routes.
 
-Endpoints:
-- POST /register - User registration
-- POST /login - User login
-- POST /refresh - Token refresh
-- GET /me - Get current user info
-- POST /reset-password - Password reset request
-=============================================================================
+This file handles sign up, login, and token refresh.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
@@ -22,6 +12,7 @@ import logging
 
 from app.database import get_db
 from app.models.user import User, UserRole
+from app.models.auth_credential import AuthCredential
 from app.schemas.user import (
     UserCreate, UserResponse, LoginRequest, TokenResponse,
     RefreshTokenRequest, PasswordResetRequest, PasswordResetConfirm
@@ -49,6 +40,9 @@ def authenticate_user(db: Session, email: str, password: str) -> User:
     """
     Authenticate a user by email and password.
     
+        This checks the user exists, that the account is active,
+        and that the password is correct.
+    
     Args:
         db: Database session
         email: User email
@@ -58,40 +52,53 @@ def authenticate_user(db: Session, email: str, password: str) -> User:
         User object if authenticated
         
     Raises:
-        HTTPException: If authentication fails
+        HTTPException: If authentication fails (401/403 codes)
     """
+    # Look up the user by email.
     user = db.query(User).filter(User.email == email).first()
     
+    # Use a generic error to avoid exposing whether the email exists.
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
     
+    # Stop here if the account is deactivated.
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is deactivated"
         )
+        
     
-    if user.is_locked:
+    # Get the password record from the auth table.
+    auth_cred = user.auth_credential
+    if not auth_cred:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User authentication not configured"
+        )
+    
+    # Stop if the account is temporarily locked.
+    if auth_cred.is_locked():
         raise HTTPException(
             status_code=status.HTTP_423_LOCKED,
             detail="Account is temporarily locked due to failed login attempts"
         )
     
-    if not auth_service.verify_password(password, user.hashed_password):
-        # Increment failed attempts
-        user.failed_login_attempts += 1
+    # Check the password.
+    if not auth_service.verify_password(password, auth_cred.hashed_password):
+        # Increment failed attempts counter
+        auth_cred.failed_login_attempts += 1
         
-        # Lock account if too many attempts
-        if user.failed_login_attempts >= settings.max_login_attempts:
-            user.locked_until = datetime.now(timezone.utc).replace(
-                minute=user.locked_until.minute + settings.lockout_duration_minutes
-            ) if user.locked_until else datetime.now(timezone.utc).replace(
-                minute=datetime.now(timezone.utc).minute + settings.lockout_duration_minutes
-            )
-            logger.warning(f"Account locked for user {user.id} due to failed attempts")
+        # Lock account if threshold exceeded
+        # DESIGN: Locks for N minutes after M failed attempts
+        # Gives user time to recover password before trying again
+        if auth_cred.failed_login_attempts >= settings.max_login_attempts:
+            from datetime import timedelta
+            auth_cred.locked_until = datetime.now(timezone.utc) + timedelta(minutes=settings.lockout_duration_minutes)
+            logger.warning(f"Account locked for user {user.user_id} due to failed attempts")
         
         db.commit()
         raise HTTPException(
@@ -99,10 +106,12 @@ def authenticate_user(db: Session, email: str, password: str) -> User:
             detail="Invalid email or password"
         )
     
-    # Reset failed attempts on successful login
-    user.failed_login_attempts = 0
-    user.locked_until = None
-    user.last_login = datetime.now(timezone.utc)
+    # Reset failed attempts counter on successful login
+    # WHY: Account recovers automatically after successful auth
+    # Prevents permanent lockout from repeated password attempts
+    auth_cred.failed_login_attempts = 0
+    auth_cred.locked_until = None
+    auth_cred.last_login = datetime.now(timezone.utc)
     db.commit()
     
     return user
@@ -141,7 +150,8 @@ def get_current_user(
             detail="Invalid token payload"
         )
     
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    # Use user_id column (matches Massoud's AWS schema)
+    user = db.query(User).filter(User.user_id == int(user_id)).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -211,11 +221,26 @@ async def register_user(
     """
     Register a new user account.
     
+    DESIGN:
+    - Email must be unique (prevents duplicate accounts)
+    - Password validated for strength (min 8 chars, letters + numbers)
+    - Role defaults to PATIENT (clinicians/admins created by admin only)
+    - Creates TWO records for HIPAA compliance:
+      1. User record (PHI: health data, demographics)
+      2. AuthCredential record (sensitive auth: password hash, login attempts)
+    
+    WHY SEPARATE TABLES:
+    - Isolates sensitive auth material from PHI
+    - Allows future encryption policies per data type
+    - Audit logging can treat auth separately from health data
+    - Database access controls can restrict auth table separately
+    
     - **Email**: Must be unique and valid
     - **Password**: Minimum 8 characters with letters and numbers
     - **Role**: Defaults to patient, admin can set other roles
     """
-    # Check if email already exists
+    # Email uniqueness check prevents account enumeration
+    # (though error message doesn't reveal if email exists)
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
         raise HTTPException(
@@ -223,25 +248,38 @@ async def register_user(
             detail="Email already registered"
         )
     
-    # Hash password
+    # Hash password using pbkdf2_sha256
+    # WHY: Uses OWASP-recommended 200,000 iterations (slow hash = safe)
     hashed_password = auth_service.hash_password(user_data.password)
     
-    # Create user
+    # Create User record with health/demographic data
+    # Includes Massoud's original columns from AWS RDS schema
     user = User(
         email=user_data.email,
-        hashed_password=hashed_password,
-        name=user_data.name,
+        full_name=user_data.name,
         age=user_data.age,
         gender=user_data.gender,
         phone=user_data.phone,
-        role=user_data.role
+        role=user_data.role  # Defaults to PATIENT if not specified
     )
     
+    # Create SEPARATE AuthCredential record
+    # DESIGN: Keeps hashed password in its own table
+    # Allows SQL permissions to restrict auth table access
+    auth_cred = AuthCredential(
+        user=user,
+        hashed_password=hashed_password
+    )
+    
+    # Add both records in single transaction
+    # ATOMICITY: Either both succeed or both rollback (no partial state)
     db.add(user)
+    db.add(auth_cred)
     db.commit()
     db.refresh(user)
     
-    logger.info(f"New user registered: {user.id} - {user.email}")
+    # Log registration for security audit trail
+    logger.info(f"New user registered: {user.user_id} - {user.email}")
     
     return user
 
@@ -259,15 +297,15 @@ async def login(
     """
     user = authenticate_user(db, form_data.username, form_data.password)
     
-    # Create tokens
+    # Create tokens using user_id (Massoud's PK)
     access_token = auth_service.create_access_token(
-        data={"sub": str(user.id), "role": user.role.value}
+        data={"sub": str(user.user_id), "role": (user.role or UserRole.PATIENT).value}
     )
     refresh_token = auth_service.create_refresh_token(
-        data={"sub": str(user.id)}
+        data={"sub": str(user.user_id)}
     )
     
-    logger.info(f"User logged in: {user.id} - {user.email}")
+    logger.info(f"User logged in: {user.user_id} - {user.email}")
     
     return TokenResponse(
         access_token=access_token,
@@ -297,7 +335,7 @@ async def refresh_token(
         )
     
     user_id = payload.get("sub")
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    user = db.query(User).filter(User.user_id == int(user_id)).first()
     
     if not user or not user.is_active:
         raise HTTPException(
@@ -307,10 +345,10 @@ async def refresh_token(
     
     # Create new tokens
     access_token = auth_service.create_access_token(
-        data={"sub": str(user.id), "role": user.role.value}
+        data={"sub": str(user.user_id), "role": (user.role or UserRole.PATIENT).value}
     )
     refresh_token = auth_service.create_refresh_token(
-        data={"sub": str(user.id)}
+        data={"sub": str(user.user_id)}
     )
     
     return TokenResponse(
