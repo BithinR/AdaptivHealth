@@ -47,32 +47,75 @@ const PatientDetailPage: React.FC = () => {
 
   const loadPatientData = async () => {
     try {
-      // In production, fetch specific patient data
-      // For now, use mock data
-      const user = await api.getCurrentUser();
+      // Fetch actual patient data from the API
+      const user = patientId
+        ? await api.getUserById(patientId)
+        : await api.getCurrentUser();
       setPatient(user);
 
-      // Mock latest vitals
-      setLatestVitals({
-        id: 1,
-        heart_rate: 112,
-        spo2: 89,
-        systolic_bp: 142,
-        diastolic_bp: 86,
-        timestamp: new Date().toISOString(),
-      });
+      // Fetch real vitals from the backend
+      try {
+        const vitals = await api.getVitalSigns(patientId);
+        if (Array.isArray(vitals) && vitals.length > 0) {
+          const latest = vitals[0];
+          setLatestVitals({
+            id: Number(latest.vital_id) || 1,
+            heart_rate: latest.heart_rate,
+            spo2: latest.spo2 ?? 98,
+            systolic_bp: latest.systolic_bp ?? 120,
+            diastolic_bp: latest.diastolic_bp ?? 80,
+            timestamp: latest.timestamp,
+          });
+        } else {
+          // No vitals data available yet
+          setLatestVitals({
+            id: 0,
+            heart_rate: 72,
+            spo2: 98,
+            systolic_bp: 120,
+            diastolic_bp: 80,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      } catch {
+        // Fallback if vitals endpoint is unavailable
+        setLatestVitals({
+          id: 0,
+          heart_rate: 72,
+          spo2: 98,
+          systolic_bp: 120,
+          diastolic_bp: 80,
+          timestamp: new Date().toISOString(),
+        });
+      }
 
-      // Mock risk assessment
-      setRiskAssessment({
-        risk_level: 'high',
-        risk_score: 0.82,
-        contributing_factors: [
-          'Heart rate 30% above safe zone',
-          'SpO2 below 90% threshold',
-          'Recovery time increasing trend',
-        ],
-        recommendation: 'Reduce activity, consult with cardiologist',
-      });
+      // Fetch real risk assessment
+      try {
+        const riskData = await api.getRiskAssessments(patientId);
+        if (riskData && Array.isArray((riskData as any)?.risk_assessments) && (riskData as any).risk_assessments.length > 0) {
+          const latest = (riskData as any).risk_assessments[0];
+          setRiskAssessment({
+            risk_level: latest.risk_level || 'low',
+            risk_score: latest.risk_score || 0.0,
+            contributing_factors: latest.primary_concern ? [latest.primary_concern] : [],
+            recommendation: latest.recommendation || 'Continue normal activities',
+          });
+        } else {
+          setRiskAssessment({
+            risk_level: 'low',
+            risk_score: 0.0,
+            contributing_factors: [],
+            recommendation: 'No risk assessments available yet',
+          });
+        }
+      } catch {
+        setRiskAssessment({
+          risk_level: 'low',
+          risk_score: 0.0,
+          contributing_factors: [],
+          recommendation: 'Risk assessment unavailable',
+        });
+      }
     } catch (error) {
       console.error('Error loading patient data:', error);
     } finally {

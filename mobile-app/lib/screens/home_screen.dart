@@ -10,6 +10,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../services/api_client.dart';
+import 'workout_screen.dart';
+import 'recovery_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final ApiClient apiClient;
@@ -27,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late Future<Map<String, dynamic>> _vitalsFuture;
   late Future<Map<String, dynamic>> _riskFuture;
   late Future<Map<String, dynamic>> _userFuture;
+  int _currentTabIndex = 0;
 
   @override
   void initState() {
@@ -114,7 +117,9 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.notifications_none),
             color: AdaptivColors.text700,
             onPressed: () {
-              // TODO: Navigate to notifications
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('No new notifications')),
+              );
             },
           ),
         ],
@@ -257,9 +262,42 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Profile',
           ),
         ],
-        currentIndex: 0,
+        currentIndex: _currentTabIndex,
         onTap: (index) {
-          // TODO: Navigate to different tabs
+          if (index == _currentTabIndex) return;
+          setState(() {
+            _currentTabIndex = index;
+          });
+          switch (index) {
+            case 1:
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => WorkoutScreen(apiClient: widget.apiClient),
+                ),
+              ).then((_) => setState(() { _currentTabIndex = 0; }));
+              break;
+            case 2:
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RecoveryScreen(apiClient: widget.apiClient),
+                ),
+              ).then((_) => setState(() { _currentTabIndex = 0; }));
+              break;
+            case 3:
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('History: Check your vitals trends in the web dashboard')),
+              );
+              setState(() { _currentTabIndex = 0; });
+              break;
+            case 4:
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Profile settings coming soon')),
+              );
+              setState(() { _currentTabIndex = 0; });
+              break;
+          }
         },
       ),
     );
@@ -453,8 +491,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: AdaptivColors.background50,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Center(
-                  child: Text('Trend chart - coming soon'),
+              child: CustomPaint(
+                size: const Size(double.infinity, 100),
+                painter: _SparklinePainter(),
               ),
             ),
             const SizedBox(height: 12),
@@ -521,4 +560,60 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+/// Simple sparkline painter that draws a demo heart rate trend line.
+class _SparklinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Sample HR data points representing a typical day trend
+    final dataPoints = [68, 72, 70, 75, 82, 90, 85, 78, 74, 71, 73, 76];
+    final minVal = 60.0;
+    final maxVal = 100.0;
+    final range = maxVal - minVal;
+
+    final paint = Paint()
+      ..color = AdaptivColors.primary
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          AdaptivColors.primary.withAlpha(60),
+          AdaptivColors.primary.withAlpha(5),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    final path = Path();
+    final fillPath = Path();
+    final stepX = size.width / (dataPoints.length - 1);
+    final padding = 8.0;
+    final drawHeight = size.height - padding * 2;
+
+    for (int i = 0; i < dataPoints.length; i++) {
+      final x = i * stepX;
+      final y = padding + drawHeight - ((dataPoints[i] - minVal) / range) * drawHeight;
+      if (i == 0) {
+        path.moveTo(x, y);
+        fillPath.moveTo(x, size.height);
+        fillPath.lineTo(x, y);
+      } else {
+        path.lineTo(x, y);
+        fillPath.lineTo(x, y);
+      }
+    }
+
+    fillPath.lineTo(size.width, size.height);
+    fillPath.close();
+
+    canvas.drawPath(fillPath, fillPaint);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
