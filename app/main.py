@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.database import init_db, check_db_connection
-from app.api import auth, user, vital_signs, predict
+from app.api import auth, user, vital_signs, predict, activity, alert
 from app.services.ml_prediction import load_ml_model
 
 # Configure logging
@@ -214,6 +214,20 @@ app.include_router(
     vital_signs.router,
     prefix="/api/v1",
     tags=["Vital Signs"]
+)
+
+# Activity routes
+app.include_router(
+    activity.router,
+    prefix="/api/v1",
+    tags=["Activities"]
+)
+
+# Alert routes
+app.include_router(
+    alert.router,
+    prefix="/api/v1",
+    tags=["Alerts"]
 )
 
 # ML Prediction routes
