@@ -130,12 +130,15 @@ class AuthService:
                 minutes=settings.access_token_expire_minutes
             )
         
-        # Add standard fields.
+        # Add standard fields (don't override type if already provided)
         to_encode.update({
             "exp": expire,  # Expiration time (unix timestamp)
             "iat": datetime.now(timezone.utc),  # Issued-at time
-            "type": "access"  # Token type marker
         })
+        
+        # Set type to "access" only if not already specified
+        if "type" not in to_encode:
+            to_encode["type"] = "access"
         
         # Encode the token with the app's secret key.
         encoded_jwt = jwt.encode(
