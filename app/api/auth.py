@@ -381,21 +381,30 @@ async def request_password_reset(
     
     - **email**: User email address
     
-    Note: In production, this would send an email with reset link.
-    For now, it just validates the email exists.
+    Generates a reset token and logs it (in production, would send via email).
     """
     user = db.query(User).filter(User.email == reset_data.email).first()
     
     if user:
-        # In production, generate reset token and send email
-        # For now, just log the request
-        logger.info(f"Password reset requested for: {reset_data.email}")
+        # Generate reset token with 1-hour expiration
+        reset_token = auth_service.create_access_token(
+            data={"user_id": user.user_id, "type": "password_reset"},
+            expires_delta=timedelta(hours=1)
+        )
         
-        # TODO: Implement email sending
+        logger.info(f"Password reset requested for: {reset_data.email}")
+        logger.info(f"Reset token (would be sent via email): {reset_token}")
+        
+        # In production, this would send an email with the reset link
+        # Example: https://app.adaptivhealth.com/reset-password?token={reset_token}
+        # For now, we log the token for testing purposes
         # background_tasks.add_task(send_reset_email, user.email, reset_token)
     
     # Always return success to prevent email enumeration
-    return {"message": "If the email exists, a reset link has been sent"}
+    return {
+        "message": "If the email exists, a reset link has been sent",
+        "token": reset_token if user else None  # Only for development/testing
+    }
 
 
 @router.post("/reset-password/confirm")
@@ -409,15 +418,59 @@ async def confirm_password_reset(
     - **token**: Reset token from email
     - **new_password**: New password
     
-    Note: Token validation not implemented yet.
+    Validates the reset token and updates the user's password.
     """
-    # TODO: Validate reset token
-    # For now, this is a placeholder
+    # Decode and validate the reset token
+    payload = auth_service.decode_token(reset_data.token)
     
-    # In production, decode token to get user_id
-    # user_id = decode_reset_token(reset_data.token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
     
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Password reset confirmation not implemented yet"
-    )
+    # Verify this is a password reset token
+    if payload.get("type") != "password_reset":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token type"
+        )
+    
+    # Get user ID from token
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token payload"
+        )
+    
+    # Get the user
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Hash the new password
+    hashed_password = auth_service.hash_password(reset_data.new_password)
+    
+    # Update the password in auth_credentials table
+    auth_cred = user.auth_credential
+    if not auth_cred:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User authentication not configured"
+        )
+    
+    auth_cred.hashed_password = hashed_password
+    auth_cred.failed_login_attempts = 0  # Reset failed attempts
+    auth_cred.account_locked_until = None  # Unlock account if locked
+    
+    db.commit()
+    
+    logger.info(f"Password reset successful for user {user_id}")
+    
+    return {
+        "message": "Password reset successful. You can now log in with your new password."
+    }

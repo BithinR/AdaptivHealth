@@ -14,6 +14,7 @@ import logging
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.vital_signs import VitalSignRecord
+from app.models.alert import Alert, AlertType, SeverityLevel
 from app.schemas.vital_signs import (
     VitalSignCreate, VitalSignResponse, VitalSignBatchCreate,
     VitalSignsSummary, VitalSignsHistoryResponse, VitalSignsStats
@@ -36,24 +37,87 @@ def check_vitals_for_alerts(user_id: int, vital_data: VitalSignCreate):
     """
     Background task to check vital signs for alerts.
     
-    In the future, this will raise alerts if readings are dangerous.
+    Creates alert records and logs notifications when thresholds are exceeded.
     
     Args:
         user_id: User ID
         vital_data: Vital signs data
     """
-    # Placeholder for alert logic.
+    # Create a new database session for background task
+    from app.database import SessionLocal
+    db = SessionLocal()
     
-    logger.info(f"Checking vitals for alerts: user {user_id}")
-    
-    # Example alert checks (simple for now).
-    if vital_data.heart_rate > 180:
-        logger.warning(f"High heart rate alert for user {user_id}: {vital_data.heart_rate} BPM")
-        # TODO: Create alert record and send notifications
-    
-    if vital_data.spo2 and vital_data.spo2 < 90:
-        logger.warning(f"Low oxygen alert for user {user_id}: {vital_data.spo2}%")
-        # TODO: Create alert record and send notifications
+    try:
+        logger.info(f"Checking vitals for alerts: user {user_id}")
+        
+        # Check for high heart rate (critical threshold: >180 BPM)
+        if vital_data.heart_rate > 180:
+            logger.warning(f"High heart rate alert for user {user_id}: {vital_data.heart_rate} BPM")
+            
+            # Create alert record
+            alert = Alert(
+                user_id=user_id,
+                alert_type=AlertType.HIGH_HEART_RATE.value,
+                severity=SeverityLevel.CRITICAL.value,
+                title="High Heart Rate Detected",
+                message=f"Heart rate of {vital_data.heart_rate} BPM exceeds safe threshold of 180 BPM",
+                action_required="Rest immediately and monitor. Contact healthcare provider if symptoms persist.",
+                trigger_value=f"{vital_data.heart_rate} BPM",
+                threshold_value="180 BPM",
+                acknowledged=False,
+                is_sent_to_user=True,
+                is_sent_to_caregiver=True,
+                is_sent_to_clinician=True
+            )
+            db.add(alert)
+            db.commit()
+            logger.info(f"Created high heart rate alert {alert.alert_id} for user {user_id}")
+        
+        # Check for low oxygen (critical threshold: <90%)
+        if vital_data.spo2 and vital_data.spo2 < 90:
+            logger.warning(f"Low oxygen alert for user {user_id}: {vital_data.spo2}%")
+            
+            # Create alert record
+            alert = Alert(
+                user_id=user_id,
+                alert_type=AlertType.LOW_SPO2.value,
+                severity=SeverityLevel.CRITICAL.value,
+                title="Low Blood Oxygen Detected",
+                message=f"Blood oxygen saturation of {vital_data.spo2}% is below safe threshold of 90%",
+                action_required="Seek immediate medical attention. This may indicate respiratory distress.",
+                trigger_value=f"{vital_data.spo2}%",
+                threshold_value="90%",
+                acknowledged=False,
+                is_sent_to_user=True,
+                is_sent_to_caregiver=True,
+                is_sent_to_clinician=True
+            )
+            db.add(alert)
+            db.commit()
+            logger.info(f"Created low oxygen alert {alert.alert_id} for user {user_id}")
+        
+        # Check for high blood pressure (warning threshold: systolic >160 or diastolic >100)
+        if vital_data.blood_pressure_systolic and vital_data.blood_pressure_systolic > 160:
+            logger.warning(f"High blood pressure alert for user {user_id}: {vital_data.blood_pressure_systolic}/{vital_data.blood_pressure_diastolic} mmHg")
+            
+            alert = Alert(
+                user_id=user_id,
+                alert_type=AlertType.HIGH_BLOOD_PRESSURE.value,
+                severity=SeverityLevel.WARNING.value,
+                title="Elevated Blood Pressure",
+                message=f"Systolic blood pressure of {vital_data.blood_pressure_systolic} mmHg exceeds threshold",
+                action_required="Monitor blood pressure and consult healthcare provider if elevated readings persist.",
+                trigger_value=f"{vital_data.blood_pressure_systolic}/{vital_data.blood_pressure_diastolic or 'N/A'} mmHg",
+                threshold_value="160/100 mmHg",
+                acknowledged=False,
+                is_sent_to_user=True,
+                is_sent_to_clinician=True
+            )
+            db.add(alert)
+            db.commit()
+            logger.info(f"Created high blood pressure alert {alert.alert_id} for user {user_id}")
+    finally:
+        db.close()
 
 
 def calculate_vitals_summary(
@@ -95,6 +159,13 @@ def calculate_vitals_summary(
     spo2_values = [v.spo2 for v in vitals if v.spo2 is not None]
     hrv_values = [v.hrv for v in vitals if v.hrv is not None]
     
+    # Count alerts triggered in the same date range
+    alerts_count = db.query(Alert).filter(
+        Alert.user_id == user_id,
+        Alert.created_at >= start_date,
+        Alert.created_at <= end_date
+    ).count()
+    
     summary = VitalSignsSummary(
         date=start_date.strftime("%Y-%m-%d"),
         avg_heart_rate=sum(heart_rates) / len(heart_rates) if heart_rates else None,
@@ -105,7 +176,7 @@ def calculate_vitals_summary(
         avg_hrv=sum(hrv_values) / len(hrv_values) if hrv_values else None,
         total_readings=len(vitals),
         valid_readings=len(vitals),
-        alerts_triggered=0  # TODO: Count actual alerts
+        alerts_triggered=alerts_count
     )
     
     return summary

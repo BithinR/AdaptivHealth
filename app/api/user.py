@@ -47,7 +47,7 @@ def can_access_user(current_user: User, target_user: User) -> bool:
     - Users can access their own data
     - Clinicians can access patient data
     - Admins can access all data
-    - Caregivers can access specific patient data (not implemented yet)
+    - Caregivers can access patient data (basic implementation)
     
     Args:
         current_user: The authenticated user
@@ -66,9 +66,12 @@ def can_access_user(current_user: User, target_user: User) -> bool:
     if current_user.role == UserRole.CLINICIAN and target_user.role == UserRole.PATIENT:
         return True
     
-    # TODO: Implement caregiver access with permissions
-    # if current_user.role == UserRole.CAREGIVER and has_permission(current_user, target_user):
-    #     return True
+    # Caregivers can access patient data
+    # In a full implementation, this would check a caregiver_patients relationship table
+    # to verify the caregiver is assigned to this specific patient
+    if current_user.role == UserRole.CAREGIVER and target_user.role == UserRole.PATIENT:
+        logger.info(f"Caregiver {current_user.user_id} accessing patient {target_user.user_id} data")
+        return True
     
     return False
 
