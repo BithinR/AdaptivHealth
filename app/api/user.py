@@ -92,9 +92,9 @@ async def get_my_profile(current_user: User = Depends(get_current_user)):
     hr_zones = current_user.get_heart_rate_zones() if current_user.age else None
     
     return UserProfileResponse(
-        id=current_user.id,
+        id=current_user.user_id,
         email=current_user.email,
-        name=current_user.name,
+        name=current_user.full_name,
         age=current_user.age,
         gender=current_user.gender,
         phone=current_user.phone,
@@ -133,7 +133,7 @@ async def update_my_profile(
     db.commit()
     db.refresh(current_user)
     
-    logger.info(f"User profile updated: {current_user.id}")
+    logger.info(f"User profile updated: {current_user.user_id}")
     
     return current_user
 
@@ -160,7 +160,7 @@ async def update_medical_history(
         
         db.commit()
         
-        logger.info(f"Medical history updated for user: {current_user.id}")
+        logger.info(f"Medical history updated for user: {current_user.user_id}")
     
     return {"message": "Medical history updated successfully"}
 
@@ -193,7 +193,7 @@ async def list_users(
     if search:
         search_filter = f"%{search}%"
         query = query.filter(
-            (User.name.ilike(search_filter)) | (User.email.ilike(search_filter))
+            (User.full_name.ilike(search_filter)) | (User.email.ilike(search_filter))
         )
     
     # Count total results for pagination.
@@ -221,7 +221,7 @@ async def get_user(
     
     Admin/Clinician access only.
     """
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.user_id == user_id).first()
     
     if not user:
         raise HTTPException(
@@ -250,7 +250,7 @@ async def update_user(
     
     Admin access only.
     """
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.user_id == user_id).first()
     
     if not user:
         raise HTTPException(
@@ -272,7 +272,7 @@ async def update_user(
     db.commit()
     db.refresh(user)
     
-    logger.info(f"User updated by admin {current_user.id}: {user.id}")
+    logger.info(f"User updated by admin {current_user.user_id}: {user.user_id}")
     
     return {"message": "User updated successfully", "user": user}
 
@@ -298,14 +298,14 @@ async def create_user(
     
     # Hash password
     from app.services.auth_service import AuthService
+    from app.models.auth_credential import AuthCredential
     auth_service = AuthService()
     hashed_password = auth_service.hash_password(user_data.password)
     
-    # Create user
+    # Create user (without hashed_password - that goes in AuthCredential)
     user = User(
         email=user_data.email,
-        hashed_password=hashed_password,
-        name=user_data.name,
+        full_name=user_data.name,
         age=user_data.age,
         gender=user_data.gender,
         phone=user_data.phone,
@@ -314,11 +314,19 @@ async def create_user(
         is_verified=user_data.is_verified
     )
     
+    # Create SEPARATE AuthCredential record
+    auth_cred = AuthCredential(
+        user=user,
+        hashed_password=hashed_password
+    )
+    
+    # Add both records in single transaction
     db.add(user)
+    db.add(auth_cred)
     db.commit()
     db.refresh(user)
     
-    logger.info(f"User created by admin {current_user.id}: {user.id} - {user.email}")
+    logger.info(f"User created by admin {current_user.user_id}: {user.user_id} - {user.email}")
     
     return {"message": "User created successfully", "user": user}
 
@@ -334,7 +342,7 @@ async def deactivate_user(
     
     Admin access only. Soft delete for audit compliance.
     """
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.user_id == user_id).first()
     
     if not user:
         raise HTTPException(
@@ -351,7 +359,7 @@ async def deactivate_user(
     user.is_active = False
     db.commit()
     
-    logger.info(f"User deactivated by admin {current_user.id}: {user.id}")
+    logger.info(f"User deactivated by admin {current_user.user_id}: {user.user_id}")
     
     return {"message": "User deactivated successfully"}
 
@@ -367,7 +375,7 @@ async def get_user_medical_history(
     
     Admin/Clinician access only. Returns decrypted medical data.
     """
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.user_id == user_id).first()
     
     if not user:
         raise HTTPException(
