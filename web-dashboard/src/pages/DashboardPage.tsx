@@ -93,8 +93,8 @@ const DashboardPage: React.FC = () => {
         try {
           const consentResp = await api.getPendingConsentRequests();
           setPendingConsent(consentResp.pending_requests || []);
-        } catch {
-          // consent endpoint may not be available
+        } catch (e) {
+          console.warn('Could not load consent requests:', e);
         }
       }
 

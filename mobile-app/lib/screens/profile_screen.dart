@@ -88,8 +88,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _shareState = status['share_state'] ?? 'SHARING_ON';
         });
       }
-    } catch (_) {
-      // Consent endpoint may not be available
+    } catch (e) {
+      debugPrint('Could not load consent status: $e');
     }
   }
 

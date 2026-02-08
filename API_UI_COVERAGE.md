@@ -99,7 +99,23 @@ All paths are relative to the `/api/v1` prefix unless otherwise noted.
 | GET | `/model/retraining-readiness` | ✔ | Clinician+ | Model retraining readiness |
 | POST | `/predict/explain` | ✔ | Any | Explainability for prediction |
 
-**Total endpoints: 55**
+**Total endpoints: 55** (+ 5 new consent endpoints below)
+
+### A8. Consent / Data Sharing *(NEW)*
+
+| Method | Path | Auth | Role | Description |
+|--------|------|:----:|------|-------------|
+| GET | `/consent/status` | ✔ | Any | Get own sharing consent status |
+| POST | `/consent/disable` | ✔ | Patient | Request sharing disable (creates pending request) |
+| POST | `/consent/enable` | ✔ | Patient | Re-enable sharing (from SHARING_OFF) |
+| GET | `/consent/pending` | ✔ | Clinician | List pending disable requests |
+| POST | `/consent/{patient_id}/review` | ✔ | Clinician | Approve/reject disable request |
+
+### A9. Admin User Management *(NEW)*
+
+| Method | Path | Auth | Role | Description |
+|--------|------|:----:|------|-------------|
+| POST | `/users/{user_id}/reset-password` | ✔ | Admin | Set temporary password for user |
 
 ---
 
@@ -253,39 +269,39 @@ All paths are relative to the `/api/v1` prefix unless otherwise noted.
 
 ### D1. Missing UI for Existing Backend Features
 
-| # | Gap | Impact | Priority |
-|---|-----|--------|----------|
-| 1 | **No password-reset UI.** Backend exposes `POST /reset-password` and `POST /reset-password/confirm`, but neither client has a "Forgot Password" flow. | Users cannot self-service password resets. | High |
-| 2 | **No admin user-creation page.** `POST /users/` (admin-only) exists but the web dashboard has no Admin → Create User screen. | Admins must use raw API or scripts to onboard patients. | High |
-| 3 | **No UI for alert acknowledge/resolve.** Dashboard lists alerts but has no buttons wired to `PATCH /alerts/{id}/acknowledge` or `/resolve`. | Clinicians cannot manage alert lifecycle from the UI. | Medium |
-| 4 | **No medical-history UI.** `PUT /users/me/medical-history` and `GET /users/{id}/medical-history` have no frontend consumer. | Medical history intake requires manual API calls. | Medium |
-| 5 | **Advanced ML endpoints have zero frontend consumers.** All 11 endpoints (anomaly detection, trend forecast, NL alerts, explainability, etc.) are backend-only. | Planned Phase C / Phase D features with no UI yet. | Low (future) |
+| # | Gap | Status |
+|---|-----|--------|
+| 1 | **No password-reset UI.** | ✅ **RESOLVED** — Forgot password flow added to both mobile login screen and dashboard login page. |
+| 2 | **No admin user-creation page.** | ✅ **RESOLVED** — AdminPage added with user creation, temp password reset, and deactivation. |
+| 3 | **No UI for alert acknowledge/resolve.** Dashboard lists alerts but has no buttons wired to `PATCH /alerts/{id}/acknowledge` or `/resolve`. | Deferred — future work. |
+| 4 | **No medical-history UI.** | Deferred — future work (requires HIPAA-compliant form design). |
+| 5 | **Advanced ML endpoints have zero frontend consumers.** | Deferred — future work (Phase C/D). |
 
 ### D2. Auth & Security Gaps
 
-| # | Gap | Impact | Priority |
-|---|-----|--------|----------|
-| 6 | **No logout endpoint on backend.** Both clients clear the local token but do not invalidate it server-side. Token remains valid until expiry. | Stolen tokens cannot be revoked. | Medium |
-| 7 | **No refresh-token retry logic.** Neither client intercepts 401 responses to transparently refresh the access token. Users are logged out on token expiry. | Poor UX — sessions expire silently. | Medium |
-| 8 | **RBAC not fully enforced.** Backend role decorators (`get_current_doctor_user`, `get_current_admin_user`) exist but there is no middleware preventing a patient from accessing PHI endpoints beyond the decorator check. Dashboard has no role-based routing — all roles see the same navigation. | A patient logging into the dashboard sees the clinician view. | High |
+| # | Gap | Status |
+|---|-----|--------|
+| 6 | **No logout endpoint on backend.** Both clients clear the local token but do not invalidate it server-side. | Future work — requires token blacklist table. |
+| 7 | **No refresh-token retry logic.** | ✅ **RESOLVED** — Both clients now intercept 401, try refresh token once, retry original request, then logout on failure. |
+| 8 | **RBAC not fully enforced.** | ✅ **RESOLVED** — Admin blocked from all PHI endpoints (403). Clinician access checks consent state (SHARING_OFF → 403). Role-based routing added to dashboard login. |
 
 ### D3. Client Design Issues
 
-| # | Gap | Impact | Priority |
-|---|-----|--------|----------|
-| 9 | **Mobile app exposes a registration screen.** Per requirements, patient accounts should be provisioned by an admin — the self-registration screen should be removed or gated behind an admin flow. | Patients could create unmanaged accounts. | Medium |
-| 10 | **Dashboard has no role-based routing.** A patient and a clinician both land on the same dashboard. There is no conditional navigation based on user role. | Patients see admin/clinician-level data and navigation. | High |
-| 11 | **21 unused wrappers in `api.ts`.** Methods like `submitVitalSigns`, `startActivity`, `endActivity`, `computeRiskAssessment`, `acknowledgeAlert`, `resolveAlert`, and others are defined but never invoked. | Dead code increases maintenance burden. These should be wired to UI or pruned. | Low |
-| 12 | **5 unused wrappers in `api_client.dart`.** `getVitalHistory`, `submitVitalSigns`, `getActivityById`, `getRecommendation`, and `logout` are defined but not called. | Same as above. | Low |
+| # | Gap | Status |
+|---|-----|--------|
+| 9 | **Mobile app exposes a registration screen.** | Future work — remove or gate. Per requirements, patients are created by admin. |
+| 10 | **Dashboard has no role-based routing.** | ✅ **RESOLVED** — Admin redirected to /admin, clinician to /dashboard. |
+| 11 | **Unused wrappers in `api.ts`.** | Future work — wire or prune as needed. |
+| 12 | **Unused wrappers in `api_client.dart`.** | Future work — wire or prune as needed. |
 
 ### D4. Missing Backend Endpoints
 
-| # | Gap | Details |
-|---|-----|---------|
-| 13 | **No `POST /logout` or token-blacklist endpoint.** | Needed for secure session termination. |
-| 14 | **No consent/data-sharing workflow.** | No endpoints for patients to grant/revoke data-sharing permissions to clinicians. Required for HIPAA / privacy compliance. |
-| 15 | **`updateActivity` wrapper calls `PATCH /activities/{id}` but no such endpoint exists on the backend.** | The `api.ts` wrapper targets a route the server does not serve — will always 404/405. |
-| 16 | **`getRecommendations` and `getRecommendationById` wrappers call `GET /recommendations` and `GET /recommendations/{id}` — no matching backend routes.** | Same as above — dead wrappers pointing at non-existent endpoints. |
+| # | Gap | Status |
+|---|-----|--------|
+| 13 | **No `POST /logout` or token-blacklist endpoint.** | Future work. |
+| 14 | **No consent/data-sharing workflow.** | ✅ **RESOLVED** — Full consent state machine implemented (SHARING_ON → SHARING_DISABLE_REQUESTED → SHARING_OFF). |
+| 15 | **`updateActivity` wrapper calls `PATCH /activities/{id}` — no backend route.** | Future work — dead wrapper. |
+| 16 | **`getRecommendations`/`getRecommendationById` wrappers — no backend routes.** | Future work — dead wrappers. |
 
 ### D5. Summary Heatmap
 
@@ -297,14 +313,14 @@ Vital Signs                  ███           █████
 Activities                   ████          ██
 Alerts                                     ████
 Risk / Predictions           ██            ███
-Advanced ML
-Medical History
-Password Reset
-Admin User Mgmt
-Consent / Sharing
+Advanced ML                                          (future)
+Medical History                                       (future)
+Password Reset               ██████        ██████    ← NEW
+Admin User Mgmt                            ██████    ← NEW
+Consent / Sharing            ████          ████      ← NEW
 ```
 
-_Filled blocks (█) indicate relative coverage depth. Empty rows = no frontend coverage._
+_Filled blocks (█) indicate relative coverage depth._
 
 ---
 
@@ -314,9 +330,10 @@ _Filled blocks (█) indicate relative coverage depth. Empty rows = no frontend 
 
 | Page | API Calls |
 |------|-----------|
-| **LoginPage** | `login()`, `getCurrentUser()` |
+| **LoginPage** | `login()`, `getCurrentUser()`, `requestPasswordReset()` |
 | **RegisterPage** | `register()` |
-| **DashboardPage** | `getCurrentUser()`, `getAllUsers()`, `getAlertStats()`, `getAlerts()`, `getVitalSignsSummary()` |
+| **DashboardPage** | `getCurrentUser()`, `getAllUsers()`, `getAlertStats()`, `getAlerts()`, `getVitalSignsSummary()`, `getPendingConsentRequests()`, `reviewConsentRequest()` |
+| **AdminPage** *(NEW)* | `getCurrentUser()`, `getAllUsers()`, `createUser()`, `adminResetUserPassword()`, `deactivateUser()` |
 | **PatientsPage** | `getAllUsers()` |
 | **PatientDetailPage** | `getUserById()`, `getLatestVitalSignsForUser()`, `getVitalSignsHistoryForUser()`, `getActivitiesForUser()`, `getAlertsForUser()`, `getLatestRiskAssessmentForUser()`, `getLatestRecommendationForUser()` |
 
@@ -324,10 +341,10 @@ _Filled blocks (█) indicate relative coverage depth. Empty rows = no frontend 
 
 | Screen | API Calls |
 |--------|-----------|
-| **login_screen** | `login()` |
+| **login_screen** | `login()`, `requestPasswordReset()` |
 | **register_screen** | `register()` |
 | **home_screen** | `getLatestVitals()`, `getCurrentUser()`, `predictRisk()` |
 | **workout_screen** | `startSession()`, `endSession()` |
-| **profile_screen** | `getCurrentUser()`, `updateProfile()` |
+| **profile_screen** | `getCurrentUser()`, `updateProfile()`, `getConsentStatus()`, `requestDisableSharing()`, `enableSharing()` |
 | **history_screen** | `getActivities()` |
 | **recovery_screen** | _(no API calls — static UI)_ |

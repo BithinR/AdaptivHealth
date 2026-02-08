@@ -163,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : () async {
                         final email = _resetEmailController.text.trim();
-                        if (email.isEmpty || !email.contains('@')) {
+                        if (email.isEmpty || !RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(email)) {
                           setState(() => _errorMessage = 'Please enter a valid email');
                           return;
                         }

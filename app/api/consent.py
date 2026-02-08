@@ -80,7 +80,7 @@ async def request_sharing_disable(
     clinician must approve or reject.
     """
     if current_user.role != UserRole.PATIENT:
-        raise HTTPException(status_code=403, detail="Only patients can manage their own consent")
+        raise HTTPException(status_code=403, detail="Only patient users can request to disable data sharing")
 
     if (current_user.share_state or SHARING_ON) == SHARING_OFF:
         raise HTTPException(status_code=400, detail="Sharing is already disabled")

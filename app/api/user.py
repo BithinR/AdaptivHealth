@@ -392,6 +392,16 @@ async def admin_reset_user_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="New password must be at least 8 characters"
         )
+    if not any(c.isalpha() for c in new_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must contain at least one letter"
+        )
+    if not any(c.isdigit() for c in new_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must contain at least one digit"
+        )
 
     user = db.query(User).filter(User.user_id == user_id).first()
     if not user:
