@@ -10,74 +10,124 @@ Shows detailed information about one patient:
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, Wind, Activity, AlertTriangle, Calendar } from 'lucide-react';
+import { ArrowLeft, Heart, Wind, Activity, AlertTriangle } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 import { api } from '../services/api';
-import { User } from '../types';
+import {
+  AlertResponse,
+  ActivitySessionResponse,
+  RecommendationResponse,
+  RiskAssessmentResponse,
+  User,
+  VitalSignResponse,
+  VitalSignsHistoryResponse,
+} from '../types';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import StatusBadge, { riskToStatus } from '../components/common/StatusBadge';
-
-interface VitalReading {
-  id: number;
-  heart_rate: number;
-  spo2: number;
-  systolic_bp: number;
-  diastolic_bp: number;
-  timestamp: string;
-}
-
-interface RiskAssessment {
-  risk_level: string;
-  risk_score: number;
-  contributing_factors: string[];
-  recommendation: string;
-}
 
 const PatientDetailPage: React.FC = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
   const [patient, setPatient] = useState<User | null>(null);
-  const [latestVitals, setLatestVitals] = useState<VitalReading | null>(null);
-  const [riskAssessment, setRiskAssessment] = useState<RiskAssessment | null>(null);
+  const [latestVitals, setLatestVitals] = useState<VitalSignResponse | null>(null);
+  const [riskAssessment, setRiskAssessment] = useState<RiskAssessmentResponse | null>(null);
+  const [recommendation, setRecommendation] = useState<RecommendationResponse | null>(null);
+  const [alerts, setAlerts] = useState<AlertResponse[]>([]);
+  const [activities, setActivities] = useState<ActivitySessionResponse[]>([]);
+  const [vitalsHistory, setVitalsHistory] = useState<VitalSignsHistoryResponse | null>(null);
   const [timeRange, setTimeRange] = useState<'1week' | '2weeks' | '1month' | '3months'>('1week');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadPatientData();
-  }, [patientId]);
+  }, [patientId, timeRange]);
+
+  const rangeToDays = (range: typeof timeRange) => {
+    switch (range) {
+      case '2weeks':
+        return 14;
+      case '1month':
+        return 30;
+      case '3months':
+        return 90;
+      case '1week':
+      default:
+        return 7;
+    }
+  };
 
   const loadPatientData = async () => {
     try {
-      // In production, fetch specific patient data
-      // For now, use mock data
-      const user = await api.getCurrentUser();
+      if (!patientId) {
+        throw new Error('Missing patient id');
+      }
+
+      const userId = Number(patientId);
+      if (Number.isNaN(userId)) {
+        throw new Error('Invalid patient id');
+      }
+
+      const days = rangeToDays(timeRange);
+
+      const [user, vitals, risk, rec, alertsResponse, activitiesResponse, history] =
+        await Promise.all([
+          api.getUserById(userId),
+          api.getLatestVitalSignsForUser(userId),
+          api.getLatestRiskAssessmentForUser(userId),
+          api.getLatestRecommendationForUser(userId),
+          api.getAlertsForUser(userId, 1, 5),
+          api.getActivitiesForUser(userId, 5, 0),
+          api.getVitalSignsHistoryForUser(userId, days, 1, 100),
+        ]);
+
       setPatient(user);
-
-      // Mock latest vitals
-      setLatestVitals({
-        id: 1,
-        heart_rate: 112,
-        spo2: 89,
-        systolic_bp: 142,
-        diastolic_bp: 86,
-        timestamp: new Date().toISOString(),
-      });
-
-      // Mock risk assessment
-      setRiskAssessment({
-        risk_level: 'high',
-        risk_score: 0.82,
-        contributing_factors: [
-          'Heart rate 30% above safe zone',
-          'SpO2 below 90% threshold',
-          'Recovery time increasing trend',
-        ],
-        recommendation: 'Reduce activity, consult with cardiologist',
-      });
+      setLatestVitals(vitals);
+      setRiskAssessment(risk);
+      setRecommendation(rec);
+      setAlerts(alertsResponse.alerts ?? []);
+      setActivities(activitiesResponse.activities ?? []);
+      setVitalsHistory(history);
     } catch (error) {
       console.error('Error loading patient data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const formatTimeAgo = (isoDate?: string) => {
+    if (!isoDate) return 'Just now';
+    const date = new Date(isoDate);
+    const diffMs = Date.now() - date.getTime();
+    const diffMin = Math.max(1, Math.floor(diffMs / 60000));
+    if (diffMin < 60) return `${diffMin} min ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    return `${diffHr} hr${diffHr > 1 ? 's' : ''} ago`;
+  };
+
+  const getRiskFactors = () => {
+    const raw = riskAssessment?.risk_factors_json;
+    if (!raw) return [] as string[];
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item));
+      }
+      if (typeof parsed === 'object' && parsed !== null) {
+        return Object.values(parsed).map((item) => String(item));
+      }
+      return [String(parsed)];
+    } catch {
+      return [raw];
     }
   };
 
@@ -118,6 +168,9 @@ const PatientDetailPage: React.FC = () => {
   };
 
   const riskStatus = riskToStatus(riskAssessment?.risk_level || 'low');
+  const riskFactors = getRiskFactors();
+  const systolic = latestVitals?.blood_pressure?.systolic ?? 0;
+  const diastolic = latestVitals?.blood_pressure?.diastolic ?? 0;
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: colors.neutral['50'] }}>
@@ -193,9 +246,11 @@ const PatientDetailPage: React.FC = () => {
                 {patient.gender?.charAt(0).toUpperCase()}{patient.gender?.slice(1) || 'N/A'}, {patient.age} years old
               </p>
               <p style={{ ...typography.caption, margin: '4px 0' }}>
-                Last reading: {new Date(latestVitals.timestamp).getMinutes()} min ago
+                Last reading: {formatTimeAgo(latestVitals.timestamp)}
               </p>
-              <p style={{ ...typography.caption, margin: '4px 0' }}>Device: Fitbit Charge 6</p>
+              <p style={{ ...typography.caption, margin: '4px 0' }}>
+                Device: {latestVitals.source_device || 'Unknown device'}
+              </p>
             </div>
           </div>
         </div>
@@ -258,13 +313,13 @@ const PatientDetailPage: React.FC = () => {
               <span style={typography.overline}>SpO2</span>
             </div>
             <div style={{ ...typography.bigNumber, marginBottom: '4px' }}>
-              {latestVitals.spo2}%
+              {(latestVitals.spo2 ?? 0).toFixed(0)}%
             </div>
             <div
               style={{
                 ...typography.caption,
                 marginTop: '8px',
-                color: latestVitals.spo2 < 90 ? colors.critical.text : colors.warning.text,
+                color: (latestVitals.spo2 ?? 0) < 90 ? colors.critical.text : colors.warning.text,
               }}
             >
               ↓ Low
@@ -286,13 +341,17 @@ const PatientDetailPage: React.FC = () => {
               <span style={typography.overline}>Blood Pressure</span>
             </div>
             <div style={{ ...typography.bigNumber, marginBottom: '4px' }}>
-              {latestVitals.systolic_bp}/{latestVitals.diastolic_bp}
+              {systolic || '--'}/{diastolic || '--'}
             </div>
             <div
               style={{
                 ...typography.caption,
                 marginTop: '8px',
-                color: colors.critical.text,
+                color: getVitalStatus(systolic, 'bp') === 'critical'
+                  ? colors.critical.text
+                  : getVitalStatus(systolic, 'bp') === 'warning'
+                  ? colors.warning.text
+                  : colors.stable.text,
               }}
             >
               ↑ High
@@ -359,19 +418,72 @@ const PatientDetailPage: React.FC = () => {
           }}
         >
           <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>Heart Rate History</h3>
-          <div
-            style={{
-              height: '300px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: colors.neutral['50'],
-              borderRadius: '8px',
-              color: colors.neutral['500'],
-            }}
-          >
-            [Recharts - Heart Rate Zone Chart with overlay bands]
-          </div>
+          {vitalsHistory?.vitals?.length ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={vitalsHistory.vitals.map((v) => ({
+                time: new Date(v.timestamp).toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true,
+                }),
+                hr: v.heart_rate,
+                spo2: v.spo2,
+                systolic: v.blood_pressure?.systolic || null,
+                timestamp: v.timestamp,
+              }))}>
+                <CartesianGrid strokeDasharray="3 3" stroke={colors.neutral['200']} />
+                <XAxis
+                  dataKey="time"
+                  stroke={colors.neutral['500']}
+                  style={{ fontSize: '12px' }}
+                />
+                <YAxis
+                  stroke={colors.neutral['500']}
+                  style={{ fontSize: '12px' }}
+                  domain={[40, 180]}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: colors.neutral.white,
+                    border: `1px solid ${colors.neutral['300']}`,
+                    borderRadius: '6px',
+                  }}
+                  formatter={(value) => (value !== null ? value.toFixed(1) : 'N/A')}
+                />
+                <Legend wrapperStyle={{ paddingTop: '16px' }} />
+                <Line
+                  type="monotone"
+                  dataKey="hr"
+                  stroke={colors.semantic.critical}
+                  name="Heart Rate (BPM)"
+                  dot={false}
+                  strokeWidth={2}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="spo2"
+                  stroke={colors.semantic.warning}
+                  name="SpO2 (%)"
+                  dot={false}
+                  strokeWidth={2}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div
+              style={{
+                height: '300px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.neutral['50'],
+                borderRadius: '8px',
+                color: colors.neutral['500'],
+              }}
+            >
+              No vitals history available for chart
+            </div>
+          )}
         </div>
 
         {/* Two Column History Panels */}
@@ -395,22 +507,30 @@ const PatientDetailPage: React.FC = () => {
           >
             <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>Alert History</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ padding: '12px', backgroundColor: colors.critical.background, borderRadius: '8px' }}>
-                <div style={{ ...typography.body, color: colors.critical.text, fontWeight: 600 }}>
-                  ● Critical: Heart Rate Spike
+              {alerts.length === 0 ? (
+                <div style={{ padding: '12px', backgroundColor: colors.neutral['50'], borderRadius: '8px' }}>
+                  <div style={{ ...typography.body, fontWeight: 600 }}>No alerts available</div>
                 </div>
-                <div style={{ ...typography.caption, color: colors.critical.text, marginTop: '4px' }}>
-                  14 minutes ago
-                </div>
-              </div>
-              <div style={{ padding: '12px', backgroundColor: colors.warning.background, borderRadius: '8px' }}>
-                <div style={{ ...typography.body, color: colors.warning.text, fontWeight: 600 }}>
-                  ● Warning: Blood Pressure Elevated
-                </div>
-                <div style={{ ...typography.caption, color: colors.warning.text, marginTop: '4px' }}>
-                  34 minutes ago
-                </div>
-              </div>
+              ) : (
+                alerts.map((alert) => {
+                  const isCritical = alert.severity === 'critical' || alert.severity === 'emergency';
+                  const bg = isCritical ? colors.critical.background : colors.warning.background;
+                  const text = isCritical ? colors.critical.text : colors.warning.text;
+                  return (
+                    <div
+                      key={alert.alert_id}
+                      style={{ padding: '12px', backgroundColor: bg, borderRadius: '8px' }}
+                    >
+                      <div style={{ ...typography.body, color: text, fontWeight: 600 }}>
+                        ● {alert.severity.toUpperCase()}: {alert.title || alert.alert_type.replaceAll('_', ' ')}
+                      </div>
+                      <div style={{ ...typography.caption, color: text, marginTop: '4px' }}>
+                        {formatTimeAgo(alert.created_at)}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -426,27 +546,26 @@ const PatientDetailPage: React.FC = () => {
           >
             <h3 style={{ ...typography.sectionTitle, marginBottom: '16px' }}>Session History</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ padding: '12px', backgroundColor: colors.neutral['50'], borderRadius: '8px' }}>
-                <div style={{ ...typography.body, fontWeight: 600 }}>
-                  Jan 28: 30-min Walk
+              {activities.length === 0 ? (
+                <div style={{ padding: '12px', backgroundColor: colors.neutral['50'], borderRadius: '8px' }}>
+                  <div style={{ ...typography.body, fontWeight: 600 }}>No sessions yet</div>
                 </div>
-                <div style={{ ...typography.caption, color: colors.neutral['500'], marginTop: '4px' }}>
-                  Avg HR: 84 BPM • Recovery: Good
-                </div>
-              </div>
-              <div style={{ padding: '12px', backgroundColor: colors.neutral['50'], borderRadius: '8px' }}>
-                <div style={{ ...typography.body, fontWeight: 600 }}>
-                  Jan 27: Rest Day
-                </div>
-              </div>
-              <div style={{ padding: '12px', backgroundColor: colors.neutral['50'], borderRadius: '8px' }}>
-                <div style={{ ...typography.body, fontWeight: 600 }}>
-                  Jan 26: 20-min Walk
-                </div>
-                <div style={{ ...typography.caption, color: colors.neutral['500'], marginTop: '4px' }}>
-                  Avg HR: 78 BPM • Recovery: Excellent
-                </div>
-              </div>
+              ) : (
+                activities.map((session) => (
+                  <div
+                    key={session.session_id}
+                    style={{ padding: '12px', backgroundColor: colors.neutral['50'], borderRadius: '8px' }}
+                  >
+                    <div style={{ ...typography.body, fontWeight: 600 }}>
+                      {new Date(session.start_time).toLocaleDateString()}: {session.duration_minutes ?? '--'}-min{' '}
+                      {session.activity_type.replaceAll('_', ' ')}
+                    </div>
+                    <div style={{ ...typography.caption, color: colors.neutral['500'], marginTop: '4px' }}>
+                      Avg HR: {session.avg_heart_rate ?? '--'} BPM • Recovery: {session.recovery_time_minutes ?? '--'} min
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -470,7 +589,9 @@ const PatientDetailPage: React.FC = () => {
 
           <div style={{ marginBottom: '16px' }}>
             <div style={{ ...typography.body, color: colors.critical.text, marginBottom: '8px' }}>
-              <strong>Current Risk: {riskAssessment?.risk_level?.toUpperCase()} ({(riskAssessment?.risk_score || 0).toFixed(2)})</strong>
+              <strong>
+                Current Risk: {riskAssessment?.risk_level?.toUpperCase()} ({(riskAssessment?.risk_score || 0).toFixed(2)})
+              </strong>
             </div>
           </div>
 
@@ -479,11 +600,17 @@ const PatientDetailPage: React.FC = () => {
               Contributing Factors:
             </div>
             <ul style={{ margin: 0, paddingLeft: '20px' }}>
-              {riskAssessment?.contributing_factors.map((factor, idx) => (
-                <li key={idx} style={{ ...typography.body, color: colors.critical.text, marginBottom: '4px' }}>
-                  {factor}
+              {riskFactors.length === 0 ? (
+                <li style={{ ...typography.body, color: colors.critical.text, marginBottom: '4px' }}>
+                  No contributing factors available.
                 </li>
-              ))}
+              ) : (
+                riskFactors.map((factor, idx) => (
+                  <li key={idx} style={{ ...typography.body, color: colors.critical.text, marginBottom: '4px' }}>
+                    {factor}
+                  </li>
+                ))
+              )}
             </ul>
           </div>
 
@@ -492,7 +619,7 @@ const PatientDetailPage: React.FC = () => {
               Recommendation:
             </div>
             <div style={{ ...typography.body, color: colors.critical.text, marginTop: '8px' }}>
-              {riskAssessment?.recommendation}
+              {recommendation?.description || recommendation?.warnings || 'No recommendation available.'}
             </div>
           </div>
         </div>

@@ -32,6 +32,13 @@ import {
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
+const normalizeUser = (data: any): User => ({
+  ...data,
+  user_id: data.user_id ?? data.id,
+  full_name: data.full_name ?? data.name,
+  user_role: data.user_role ?? data.role,
+});
+
 class ApiService {
   private client: AxiosInstance;
 
@@ -106,8 +113,15 @@ class ApiService {
     gender?: string;
     phone?: string;
   }): Promise<User> {
-    const response = await this.client.post<User>('/register', userData);
-    return response.data;
+    const response = await this.client.post<User>('/register', {
+      email: userData.email,
+      password: userData.password,
+      name: userData.full_name,
+      age: userData.age,
+      gender: userData.gender,
+      phone: userData.phone,
+    });
+    return normalizeUser(response.data);
   }
 
   // =========================================================================
@@ -116,7 +130,7 @@ class ApiService {
 
   async getCurrentUser(): Promise<UserProfileResponse> {
     const response = await this.client.get<UserProfileResponse>('/users/me');
-    return response.data;
+    return normalizeUser(response.data) as UserProfileResponse;
   }
 
   async updateCurrentUserProfile(data: {
@@ -125,8 +139,13 @@ class ApiService {
     gender?: string;
     phone?: string;
   }): Promise<UserProfileResponse> {
-    const response = await this.client.put<UserProfileResponse>('/users/me', data);
-    return response.data;
+    const response = await this.client.put<UserProfileResponse>('/users/me', {
+      name: data.full_name,
+      age: data.age,
+      gender: data.gender,
+      phone: data.phone,
+    });
+    return normalizeUser(response.data) as UserProfileResponse;
   }
 
   async getAllUsers(
@@ -136,12 +155,15 @@ class ApiService {
     const response = await this.client.get<UserListResponse>('/users', {
       params: { page, per_page: perPage },
     });
-    return response.data;
+    return {
+      ...response.data,
+      users: response.data.users.map(normalizeUser),
+    };
   }
 
   async getUserById(userId: number): Promise<User> {
     const response = await this.client.get<User>(`/users/${userId}`);
-    return response.data;
+    return normalizeUser(response.data);
   }
 
   // =========================================================================
@@ -150,6 +172,11 @@ class ApiService {
 
   async getLatestVitalSigns(): Promise<VitalSignResponse> {
     const response = await this.client.get<VitalSignResponse>('/vitals/latest');
+    return response.data;
+  }
+
+  async getLatestVitalSignsForUser(userId: number): Promise<VitalSignResponse> {
+    const response = await this.client.get<VitalSignResponse>(`/vitals/user/${userId}/latest`);
     return response.data;
   }
 
@@ -166,9 +193,31 @@ class ApiService {
     return response.data;
   }
 
-  async getVitalSignsSummary(date?: string): Promise<any> {
+  async getVitalSignsHistoryForUser(
+    userId: number,
+    days: number = 7,
+    page: number = 1,
+    perPage: number = 50
+  ): Promise<VitalSignsHistoryResponse> {
+    const response = await this.client.get<VitalSignsHistoryResponse>(
+      `/vitals/user/${userId}/history`,
+      {
+        params: { days, page, per_page: perPage },
+      }
+    );
+    return response.data;
+  }
+
+  async getVitalSignsSummary(days: number = 7): Promise<any> {
     const response = await this.client.get('/vitals/summary', {
-      params: date ? { date } : undefined,
+      params: { days },
+    });
+    return response.data;
+  }
+
+  async getVitalSignsSummaryForUser(userId: number, days: number = 7): Promise<any> {
+    const response = await this.client.get(`/vitals/user/${userId}/summary`, {
+      params: { days },
     });
     return response.data;
   }
@@ -198,9 +247,23 @@ class ApiService {
     return response.data;
   }
 
+  async getLatestRiskAssessmentForUser(userId: number): Promise<RiskAssessmentResponse> {
+    const response = await this.client.get<RiskAssessmentResponse>(
+      `/patients/${userId}/risk-assessments/latest`
+    );
+    return response.data;
+  }
+
   async computeRiskAssessment(): Promise<RiskAssessmentComputeResponse> {
     const response = await this.client.post<RiskAssessmentComputeResponse>(
       '/risk-assessments/compute'
+    );
+    return response.data;
+  }
+
+  async computeRiskAssessmentForUser(userId: number): Promise<RiskAssessmentComputeResponse> {
+    const response = await this.client.post<RiskAssessmentComputeResponse>(
+      `/patients/${userId}/risk-assessments/compute`
     );
     return response.data;
   }
@@ -231,6 +294,13 @@ class ApiService {
   async getLatestRecommendation(): Promise<RecommendationResponse> {
     const response = await this.client.get<RecommendationResponse>(
       '/recommendations/latest'
+    );
+    return response.data;
+  }
+
+  async getLatestRecommendationForUser(userId: number): Promise<RecommendationResponse> {
+    const response = await this.client.get<RecommendationResponse>(
+      `/patients/${userId}/recommendations/latest`
     );
     return response.data;
   }
@@ -284,6 +354,17 @@ class ApiService {
     return response.data;
   }
 
+  async getAlertsForUser(
+    userId: number,
+    page: number = 1,
+    perPage: number = 50
+  ): Promise<AlertListResponse> {
+    const response = await this.client.get<AlertListResponse>(`/alerts/user/${userId}`, {
+      params: { page, per_page: perPage },
+    });
+    return response.data;
+  }
+
   async getAlertStats(): Promise<AlertStatsResponse> {
     const response = await this.client.get<AlertStatsResponse>('/alerts/stats');
     return response.data;
@@ -313,14 +394,40 @@ class ApiService {
   // Activities
   // =========================================================================
 
-  async getActivities(
-    page: number = 1,
-    perPage: number = 50
-  ): Promise<ActivityListResponse> {
-    const response = await this.client.get<ActivityListResponse>('/activities', {
-      params: { page, per_page: perPage },
+  async getActivities(limit: number = 50, offset: number = 0): Promise<ActivityListResponse> {
+    const response = await this.client.get('/activities', {
+      params: { limit, offset },
     });
-    return response.data;
+    const data = response.data;
+    if (Array.isArray(data)) {
+      return {
+        activities: data,
+        total: data.length,
+        page: 1,
+        per_page: data.length,
+      };
+    }
+    return data as ActivityListResponse;
+  }
+
+  async getActivitiesForUser(
+    userId: number,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<ActivityListResponse> {
+    const response = await this.client.get(`/activities/user/${userId}`, {
+      params: { limit, offset },
+    });
+    const data = response.data;
+    if (Array.isArray(data)) {
+      return {
+        activities: data,
+        total: data.length,
+        page: 1,
+        per_page: data.length,
+      };
+    }
+    return data as ActivityListResponse;
   }
 
   async getActivityById(sessionId: number): Promise<ActivitySessionResponse> {
