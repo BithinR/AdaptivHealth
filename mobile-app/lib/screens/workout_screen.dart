@@ -64,7 +64,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
       // Call API to start session
       final response = await widget.apiClient.startSession(
         sessionType: 'workout',
-        wellnessLevel: _selectedWellness,
+        targetDuration: 30, // Default 30 minute workout
       );
 
       if (mounted) {
@@ -165,7 +165,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
 
               _buildPhaseCard(
                 phase: 'Warm-up',
-                icon: Icons.fire_truck_alert,
+                icon: Icons.local_fire_department,
                 duration: '5-10 min',
                 hrMin: warmupMin,
                 hrMax: warmupMax,
@@ -432,7 +432,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     });
 
     try {
-      await widget.apiClient.endSession(sessionId: widget.sessionId);
+      await widget.apiClient.endSession(
+        sessionId: int.parse(widget.sessionId),
+        avgHeartRate: _currentHR,
+        maxHeartRate: _maxHR,
+      );
 
       if (mounted) {
         Navigator.pop(context);
@@ -455,7 +459,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final fillPercentage = (_currentHR / _maxHR).clamp(0.0, 1.0);
 
     return Scaffold(
-      backgroundColor: AdaptivColors.background900,
+      backgroundColor: AdaptivColors.background50,
       body: SafeArea(
         child: Stack(
           children: [

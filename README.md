@@ -21,7 +21,7 @@ pip install -r requirements.txt
 # Run the server
 python -m app.main
 ```
-Backend runs on `http://localhost:8001`
+Backend runs on `http://localhost:8000`
 
 ### 2. Start the Flutter App
 ```bash
@@ -329,12 +329,12 @@ flutter run
 
 ### "Backend connection refused"
 - Check backend is running: `python -m app.main`
-- Verify port 8001 is not in use
+- Verify port 8000 is not in use
 
 ### "Flutter API 404 error"
 - Use correct API URL:
-  - Physical device/iOS: `http://localhost:8001`
-  - Android emulator: `http://10.0.2.2:8001`
+  - Physical device/iOS: `http://localhost:8000`
+  - Android emulator: `http://10.0.2.2:8000`
 
 ### "JWT token expired"
 - Tokens automatically refresh via API interceptor

@@ -10,7 +10,6 @@ This version includes:
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'core/api_client.dart';
 import 'core/token_storage.dart';

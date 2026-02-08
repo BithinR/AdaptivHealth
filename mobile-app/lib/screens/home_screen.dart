@@ -10,6 +10,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../services/api_client.dart';
+import 'workout_screen.dart';
+import 'recovery_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final ApiClient apiClient;
@@ -27,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late Future<Map<String, dynamic>> _vitalsFuture;
   late Future<Map<String, dynamic>> _riskFuture;
   late Future<Map<String, dynamic>> _userFuture;
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -119,121 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: Future.wait([_userFuture, _vitalsFuture, _riskFuture])
-            .then((results) => {
-              'user': results[0],
-              'vitals': results[1],
-              'risk': results[2],
-            }),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-
-          if (!snapshot.hasData) {
-            return Center(
-              child: Text('Error loading data: ${snapshot.error}'),
-            );
-          }
-
-          final user = snapshot.data!['user'] as Map<String, dynamic>;
-          final vitals = snapshot.data!['vitals'] as Map<String, dynamic>;
-          final risk = snapshot.data!['risk'] as Map<String, dynamic>;
-
-          final userName = user['name'] ?? 'Patient';
-          final firstName = userName.split(' ').first;
-          final heartRate = vitals['heart_rate'] ?? 72;
-          final spo2 = vitals['spo2'] ?? 98;
-          final systolicBp = vitals['systolic_bp'] ?? 120;
-          final diastolicBp = vitals['diastolic_bp'] ?? 80;
-          final riskLevel = risk['risk_level'] ?? 'low';
-          final riskScore = risk['risk_score'] ?? 0.23;
-
-          return SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Greeting
-                  Text(
-                    'Good morning, $firstName',
-                    style: AdaptivTypography.screenTitle,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    riskLevel.toLowerCase() == 'high'
-                        ? 'Stay calm — your heart is working hard'
-                        : 'Your heart is looking good today',
-                    style: AdaptivTypography.caption,
-                  ),
-                  const SizedBox(height: 32),
-
-                  // HERO HEART RATE RING
-                  Center(
-                    child: _buildHeartRateRing(
-                      heartRate: heartRate,
-                      riskLevel: riskLevel,
-                      maxSafeHR: 150, // Typical for healthy adults
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Activity phase & zone
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _getRiskZoneLabel(heartRate),
-                        style: AdaptivTypography.body,
-                      ),
-                      Text(
-                        _getRiskStatus(riskLevel),
-                        style: AdaptivTypography.body,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Secondary Vitals Grid
-                  _buildVitalsGrid(
-                    spo2: spo2,
-                    systolicBp: systolicBp,
-                    diastolicBp: diastolicBp,
-                    riskLevel: riskLevel,
-                    riskScore: riskScore,
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Heart Rate Sparkline
-                  _buildHeartRateSparkline(),
-                  const SizedBox(height: 32),
-
-                  // AI Recommendation Card
-                  _buildRecommendationCard(riskLevel),
-                  const SizedBox(height: 32),
-
-                  // Refresh button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _loadData();
-                        });
-                      },
-                      child: const Text('Refresh Data'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+      body: _getSelectedScreen(),
       bottomNavigationBar: BottomNavigationBar(
         items: const [
           BottomNavigationBarItem(
@@ -257,11 +146,190 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Profile',
           ),
         ],
-        currentIndex: 0,
+        currentIndex: _selectedIndex,
         onTap: (index) {
-          // TODO: Navigate to different tabs
+          setState(() {
+            _selectedIndex = index;
+          });
         },
       ),
+    );
+  }
+
+  Widget _getSelectedScreen() {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildHomeTab();
+      case 1:
+        return WorkoutScreen(apiClient: widget.apiClient);
+      case 2:
+        return RecoveryScreen(apiClient: widget.apiClient);
+      case 3:
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.history, size: 64, color: AdaptivColors.primary),
+                const SizedBox(height: 16),
+                Text(
+                  'History',
+                  style: AdaptivTypography.screenTitle,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Coming soon - View your health history here',
+                  style: AdaptivTypography.caption,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        );
+      case 4:
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.person, size: 64, color: AdaptivColors.primary),
+                const SizedBox(height: 16),
+                Text(
+                  'Profile',
+                  style: AdaptivTypography.screenTitle,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Coming soon - Manage your profile here',
+                  style: AdaptivTypography.caption,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        );
+      default:
+        return _buildHomeTab();
+    }
+  }
+
+  Widget _buildHomeTab() {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: Future.wait([_userFuture, _vitalsFuture, _riskFuture])
+          .then((results) => {
+            'user': results[0],
+            'vitals': results[1],
+            'risk': results[2],
+          }),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return Center(
+            child: Text('Error loading data: ${snapshot.error}'),
+          );
+        }
+
+        final user = snapshot.data!['user'] as Map<String, dynamic>;
+        final vitals = snapshot.data!['vitals'] as Map<String, dynamic>;
+        final risk = snapshot.data!['risk'] as Map<String, dynamic>;
+
+        final userName = user['name'] ?? 'Patient';
+        final firstName = userName.split(' ').first;
+        final heartRate = vitals['heart_rate'] ?? 72;
+        final spo2 = vitals['spo2'] ?? 98;
+        final systolicBp = vitals['systolic_bp'] ?? 120;
+        final diastolicBp = vitals['diastolic_bp'] ?? 80;
+        final riskLevel = risk['risk_level'] ?? 'low';
+        final riskScore = risk['risk_score'] ?? 0.23;
+
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Greeting
+                Text(
+                  'Good morning, $firstName',
+                  style: AdaptivTypography.screenTitle,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  riskLevel.toLowerCase() == 'high'
+                      ? 'Stay calm — your heart is working hard'
+                      : 'Your heart is looking good today',
+                  style: AdaptivTypography.caption,
+                ),
+                const SizedBox(height: 32),
+
+                // HERO HEART RATE RING
+                Center(
+                  child: _buildHeartRateRing(
+                    heartRate: heartRate,
+                    riskLevel: riskLevel,
+                    maxSafeHR: 150, // Typical for healthy adults
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Activity phase & zone
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _getRiskZoneLabel(heartRate),
+                      style: AdaptivTypography.body,
+                    ),
+                    Text(
+                      _getRiskStatus(riskLevel),
+                      style: AdaptivTypography.body,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+
+                // Secondary Vitals Grid
+                _buildVitalsGrid(
+                  spo2: spo2,
+                  systolicBp: systolicBp,
+                  diastolicBp: diastolicBp,
+                  riskLevel: riskLevel,
+                  riskScore: riskScore,
+                ),
+                const SizedBox(height: 32),
+
+                // Heart Rate Sparkline
+                _buildHeartRateSparkline(),
+                const SizedBox(height: 32),
+
+                // AI Recommendation Card
+                _buildRecommendationCard(riskLevel),
+                const SizedBox(height: 32),
+
+                // Refresh button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _loadData();
+                      });
+                    },
+                    child: const Text('Refresh Data'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

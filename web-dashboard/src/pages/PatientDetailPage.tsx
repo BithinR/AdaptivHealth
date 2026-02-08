@@ -11,7 +11,8 @@ Shows detailed information about one patient:
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, Wind, Activity, AlertTriangle, Calendar } from 'lucide-react';
-import { api, User } from '../services/api';
+import { api } from '../services/api';
+import { User } from '../types';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import StatusBadge, { riskToStatus } from '../components/common/StatusBadge';
@@ -179,13 +180,13 @@ const PatientDetailPage: React.FC = () => {
                 color: colors.primary.default,
               }}
             >
-              {patient.name?.substring(0, 2).toUpperCase()}
+              {patient.full_name?.substring(0, 2).toUpperCase()}
             </div>
 
             {/* Patient Info */}
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
-                <h1 style={{ ...typography.sectionTitle, margin: 0 }}>{patient.name}</h1>
+                <h1 style={{ ...typography.sectionTitle, margin: 0 }}>{patient.full_name}</h1>
                 <StatusBadge status={riskStatus} />
               </div>
               <p style={{ ...typography.body, margin: '4px 0' }}>

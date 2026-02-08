@@ -66,7 +66,7 @@ class Settings(BaseSettings):
         default=[
             "http://localhost:3000",   # React dashboard
             "http://localhost:5173",   # Vite dev server
-            "http://localhost:8080",   # Flutter web
+            "http://localhost:5000",   # Flutter web
         ]
     )
 

@@ -24,7 +24,8 @@ import {
   BarChart3,
   Settings,
 } from 'lucide-react';
-import { api, User } from '../services/api';
+import { api } from '../services/api';
+import { User } from '../types';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import StatCard from '../components/cards/StatCard';
@@ -153,7 +154,7 @@ const DashboardPage: React.FC = () => {
           {/* User Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
             <span style={{ ...typography.body, color: colors.neutral['700'] }}>
-              {currentUser?.name || 'Clinician'}
+              {currentUser?.full_name || 'Clinician'}
             </span>
             <button
               onClick={handleLogout}
@@ -194,7 +195,7 @@ const DashboardPage: React.FC = () => {
       >
         {/* Page Title */}
         <h2 style={typography.pageTitle}>
-          Welcome back, {currentUser?.name?.split(' ')[0] || 'Doctor'}!
+          Welcome back, {currentUser?.full_name?.split(' ')[0] || 'Doctor'}!
         </h2>
         <p style={{ ...typography.body, color: colors.neutral['500'], marginBottom: '32px' }}>
           Real-time cardiovascular patient monitoring
