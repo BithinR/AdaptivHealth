@@ -148,7 +148,26 @@ class ApiClient {
       throw _handleDioError(e);
     }
   }
+  /// Update current user profile
+  Future<Map<String, dynamic>> updateProfile({
+    String? fullName,
+    int? age,
+    String? gender,
+    String? phone,
+  }) async {
+    try {
+      final data = <String, dynamic>{};
+      if (fullName != null) data['name'] = fullName;
+      if (age != null) data['age'] = age;
+      if (gender != null) data['gender'] = gender;
+      if (phone != null) data['phone'] = phone;
 
+      final response = await _dio.put('/users/me', data: data);
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
   // ===================================
   // VITAL SIGNS ENDPOINTS
   // ===================================
@@ -279,6 +298,35 @@ class ApiClient {
           'max_heart_rate': maxHeartRate,
         },
       );
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Get my activity history
+  Future<Map<String, dynamic>> getActivities({
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/activities',
+        queryParameters: {
+          'limit': limit,
+          'offset': offset,
+        },
+      );
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
+  /// Get activity by ID
+  Future<Map<String, dynamic>> getActivityById(int sessionId) async {
+    try {
+      final response = await _dio.get('/activities/$sessionId');
       return response.data;
     } on DioException catch (e) {
       throw _handleDioError(e);

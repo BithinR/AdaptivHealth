@@ -12,6 +12,8 @@ import '../theme/typography.dart';
 import '../services/api_client.dart';
 import 'workout_screen.dart';
 import 'recovery_screen.dart';
+import 'history_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final ApiClient apiClient;
@@ -165,39 +167,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 2:
         return RecoveryScreen(apiClient: widget.apiClient);
       case 3:
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.history, size: 64, color: AdaptivColors.primary),
-                const SizedBox(height: 16),
-                Text(
-                  'History',
-                  style: AdaptivTypography.screenTitle,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Coming soon - View your health history here',
-                  style: AdaptivTypography.caption,
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        );
+        return HistoryScreen(apiClient: widget.apiClient);
       case 4:
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.person, size: 64, color: AdaptivColors.primary),
-                const SizedBox(height: 16),
-                Text(
-                  'Profile',
+        return ProfileScreen(apiClient: widget.apiClient);
                   style: AdaptivTypography.screenTitle,
                 ),
                 const SizedBox(height: 8),
