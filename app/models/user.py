@@ -77,6 +77,20 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # -------------------------------------------------------------------------
+    # Consent / Data Sharing (Phase 3)
+    # -------------------------------------------------------------------------
+    share_state = Column(
+        String(30), default="SHARING_ON", nullable=False,
+        server_default="SHARING_ON"
+    )
+    share_requested_at = Column(DateTime(timezone=True), nullable=True)
+    share_requested_by = Column(Integer, nullable=True)
+    share_reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    share_reviewed_by = Column(Integer, nullable=True)
+    share_decision = Column(String(20), nullable=True)
+    share_reason = Column(String(500), nullable=True)
+
+    # -------------------------------------------------------------------------
     # Relationships - use user_id as the FK reference
     # -------------------------------------------------------------------------
     # Authentication credentials (separate table for security)

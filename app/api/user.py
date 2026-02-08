@@ -26,7 +26,7 @@ from app.schemas.user import (
     UserProfileResponse, UserListResponse, UserCreateAdmin
 )
 from app.services.encryption import encryption_service
-from app.api.auth import get_current_user, get_current_admin_user, get_current_doctor_user
+from app.api.auth import get_current_user, get_current_admin_user, get_current_doctor_user, check_clinician_phi_access
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -370,6 +370,53 @@ async def deactivate_user(
     return {"message": "User deactivated successfully"}
 
 
+@router.post("/{user_id}/reset-password")
+async def admin_reset_user_password(
+    user_id: int,
+    body: dict,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Admin sets a temporary password for a user.
+    
+    Admin access only. Used for account management.
+    Does not expose any PHI.
+    """
+    from app.models.auth_credential import AuthCredential
+    from app.services.auth_service import AuthService
+
+    new_password = body.get("new_password")
+    if not new_password or len(new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 8 characters"
+        )
+
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    auth_cred = user.auth_credential
+    if not auth_cred:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User authentication not configured"
+        )
+
+    auth_service = AuthService()
+    auth_cred.hashed_password = auth_service.hash_password(new_password)
+    auth_cred.failed_login_attempts = 0
+    auth_cred.locked_until = None
+    db.commit()
+
+    logger.info(f"Password reset by admin {current_user.user_id} for user {user_id}")
+    return {"message": "Temporary password set successfully"}
+
+
 @router.get("/{user_id}/medical-history")
 async def get_user_medical_history(
     user_id: int,
@@ -379,7 +426,7 @@ async def get_user_medical_history(
     """
     Get a user's medical history.
     
-    Admin/Clinician access only. Returns decrypted medical data.
+    Clinician access only (PHI). Returns decrypted medical data.
     """
     user = db.query(User).filter(User.user_id == user_id).first()
     
@@ -389,11 +436,7 @@ async def get_user_medical_history(
             detail="User not found"
         )
     
-    if not can_access_user(current_user, user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
+    check_clinician_phi_access(current_user, user)
     
     if not user.medical_history_encrypted:
         return {"medical_history": None, "message": "No medical history on record"}

@@ -20,7 +20,7 @@ from app.schemas.vital_signs import (
     VitalSignsSummary, VitalSignsHistoryResponse, VitalSignsStats
 )
 from app.services.encryption import encryption_service
-from app.api.auth import get_current_user, get_current_doctor_user
+from app.api.auth import get_current_user, get_current_doctor_user, check_clinician_phi_access
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -445,6 +445,8 @@ async def get_user_latest_vitals(
             detail="User not found"
         )
     
+    check_clinician_phi_access(current_user, user)
+    
     latest = db.query(VitalSignRecord)\
                .filter(VitalSignRecord.user_id == user_id)\
                .order_by(desc(VitalSignRecord.timestamp))\
@@ -478,6 +480,8 @@ async def get_user_vitals_summary(
             detail="User not found"
         )
     
+    check_clinician_phi_access(current_user, user)
+    
     end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)
     
@@ -506,6 +510,8 @@ async def get_user_vitals_history(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
+    
+    check_clinician_phi_access(current_user, user)
     
     end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)

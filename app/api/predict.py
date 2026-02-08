@@ -21,7 +21,7 @@ from app.models.risk_assessment import RiskAssessment
 from app.models.vital_signs import VitalSignRecord
 from app.models.recommendation import ExerciseRecommendation
 from app.services.ml_prediction import get_ml_service, MLPredictionService
-from app.api.auth import get_current_user, get_current_doctor_user
+from app.api.auth import get_current_user, get_current_doctor_user, check_clinician_phi_access
 
 # Logger
 logger = logging.getLogger(__name__)
@@ -355,6 +355,8 @@ async def predict_user_risk_from_latest_session(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    check_clinician_phi_access(current_user, user)
+
     # Get the most recent session for this user.
     session = db.query(ActivitySession)\
         .filter(ActivitySession.user_id == user_id)\
@@ -609,6 +611,8 @@ async def compute_patient_risk_assessment(
     if not patient:
         raise HTTPException(status_code=404, detail="User not found")
 
+    check_clinician_phi_access(current_user, patient)
+
     service = get_ml_service()
     if not service.is_loaded:
         raise HTTPException(status_code=503, detail="ML model not loaded")
@@ -720,6 +724,11 @@ async def get_patient_latest_risk_assessment(
     current_user: User = Depends(get_current_doctor_user),
     db: Session = Depends(get_db)
 ):
+    patient = db.query(User).filter(User.user_id == user_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="User not found")
+    check_clinician_phi_access(current_user, patient)
+
     ra = (
         db.query(RiskAssessment)
         .filter(RiskAssessment.user_id == user_id)
@@ -776,6 +785,11 @@ async def get_patient_latest_recommendation(
     current_user: User = Depends(get_current_doctor_user),
     db: Session = Depends(get_db)
 ):
+    patient = db.query(User).filter(User.user_id == user_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="User not found")
+    check_clinician_phi_access(current_user, patient)
+
     rec = (
         db.query(ExerciseRecommendation)
         .filter(ExerciseRecommendation.user_id == user_id)

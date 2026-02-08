@@ -19,7 +19,7 @@ from app.schemas.activity import (
     ActivitySessionUpdate,
     ActivitySessionResponse
 )
-from app.api.auth import get_current_user, get_current_doctor_user
+from app.api.auth import get_current_user, get_current_doctor_user, check_clinician_phi_access
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -163,6 +163,15 @@ async def get_user_activities(
     
     Clinician/Admin access only.
     """
+    # Check consent
+    patient = db.query(User).filter(User.user_id == user_id).first()
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    check_clinician_phi_access(current_user, patient)
+
     activities = db.query(ActivitySession).filter(
         ActivitySession.user_id == user_id
     ).order_by(desc(ActivitySession.start_time))\

@@ -187,20 +187,45 @@ def get_current_admin_user(current_user: User = Depends(get_current_user)) -> Us
     return current_user
 
 
+def check_clinician_phi_access(clinician: User, patient: User) -> None:
+    """
+    Verify a clinician may access a patient's PHI.
+    
+    Allowed when share_state is SHARING_ON or SHARING_DISABLE_REQUESTED.
+    Blocked when share_state is SHARING_OFF.
+    
+    Raises:
+        HTTPException 403 if access is denied.
+    """
+    share_state = getattr(patient, 'share_state', None) or "SHARING_ON"
+    if share_state == "SHARING_OFF":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Patient has disabled data sharing"
+        )
+
+
 def get_current_doctor_user(current_user: User = Depends(get_current_user)) -> User:
     """
-    Dependency to ensure current user has doctor or admin role.
+    Dependency to ensure current user has doctor role (NOT admin).
+    
+    Admin must NOT access PHI endpoints. Only clinicians can.
     
     Args:
         current_user: Current authenticated user
         
     Returns:
-        User object if doctor/admin
+        User object if clinician
         
     Raises:
-        HTTPException: If user is not doctor/admin
+        HTTPException: If user is not clinician
     """
-    if current_user.role not in [UserRole.CLINICIAN, UserRole.ADMIN]:
+    if current_user.role == UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin users cannot access patient health data"
+        )
+    if current_user.role != UserRole.CLINICIAN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Clinician access required"
