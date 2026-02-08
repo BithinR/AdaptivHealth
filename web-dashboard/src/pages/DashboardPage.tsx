@@ -358,7 +358,7 @@ const DashboardPage: React.FC = () => {
             <p style={{ ...typography.caption, marginBottom: '16px' }}>Last 7 days</p>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={hrTrendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={colors.neutral['200']} />
+                <CartesianGrid strokeDasharray="3 3" stroke={colors.neutral['300']} />
                 <XAxis
                   dataKey="day"
                   stroke={colors.neutral['500']}
@@ -380,10 +380,10 @@ const DashboardPage: React.FC = () => {
                 <Line
                   type="monotone"
                   dataKey="avgHR"
-                  stroke={colors.semantic.critical}
+                  stroke={colors.critical.badge}
                   name="Avg HR (BPM)"
                   strokeWidth={2}
-                  dot={{ fill: colors.semantic.critical, r: 4 }}
+                  dot={{ fill: colors.critical.badge, r: 4 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -403,7 +403,7 @@ const DashboardPage: React.FC = () => {
             <p style={{ ...typography.caption, marginBottom: '16px' }}>Population snapshot</p>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={healthScoreData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={colors.neutral['200']} />
+                <CartesianGrid strokeDasharray="3 3" stroke={colors.neutral['300']} />
                 <XAxis
                   dataKey="range"
                   stroke={colors.neutral['500']}
@@ -422,7 +422,7 @@ const DashboardPage: React.FC = () => {
                 />
                 <Bar
                   dataKey="count"
-                  fill={colors.semantic.info}
+                  fill={colors.chart.blue}
                   name="Patient Count"
                   radius={[8, 8, 0, 0]}
                 />

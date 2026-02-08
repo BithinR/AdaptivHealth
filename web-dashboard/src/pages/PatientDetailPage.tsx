@@ -431,7 +431,7 @@ const PatientDetailPage: React.FC = () => {
                 systolic: v.blood_pressure?.systolic || null,
                 timestamp: v.timestamp,
               }))}>
-                <CartesianGrid strokeDasharray="3 3" stroke={colors.neutral['200']} />
+                <CartesianGrid strokeDasharray="3 3" stroke={colors.neutral['300']} />
                 <XAxis
                   dataKey="time"
                   stroke={colors.neutral['500']}
@@ -448,13 +448,17 @@ const PatientDetailPage: React.FC = () => {
                     border: `1px solid ${colors.neutral['300']}`,
                     borderRadius: '6px',
                   }}
-                  formatter={(value) => (value !== null ? value.toFixed(1) : 'N/A')}
+                  formatter={(value) => {
+                    if (value === null || value === undefined) return 'N/A';
+                    const n = typeof value === 'number' ? value : Number(value);
+                    return Number.isFinite(n) ? n.toFixed(1) : 'N/A';
+                  }}
                 />
                 <Legend wrapperStyle={{ paddingTop: '16px' }} />
                 <Line
                   type="monotone"
                   dataKey="hr"
-                  stroke={colors.semantic.critical}
+                  stroke={colors.critical.badge}
                   name="Heart Rate (BPM)"
                   dot={false}
                   strokeWidth={2}
@@ -462,7 +466,7 @@ const PatientDetailPage: React.FC = () => {
                 <Line
                   type="monotone"
                   dataKey="spo2"
-                  stroke={colors.semantic.warning}
+                  stroke={colors.warning.badge}
                   name="SpO2 (%)"
                   dot={false}
                   strokeWidth={2}
