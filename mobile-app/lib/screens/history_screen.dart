@@ -43,18 +43,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     try {
       final response = await widget.apiClient.getActivities(limit: 50, offset: 0);
       
-      // Handle response - might be array or object with 'activities' key
-      List<dynamic> activitiesList;
-      if (response is List) {
-        activitiesList = response;
-      } else if (response is Map && response.containsKey('activities')) {
-        activitiesList = response['activities'] as List;
-      } else {
-        activitiesList = [];
-      }
-
       setState(() {
-        _activities = activitiesList.cast<Map<String, dynamic>>();
+        _activities = response.cast<Map<String, dynamic>>();
         _loading = false;
       });
     } catch (e) {
@@ -136,7 +126,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         const SizedBox(height: 16),
                         Text(
                           'Failed to load activities',
-                          style: AdaptivTypography.bodyBold,
+                          style: AdaptivTypography.body.copyWith(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -164,7 +154,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             const SizedBox(height: 16),
                             Text(
                               'No Activity Yet',
-                              style: AdaptivTypography.bodyBold,
+                              style: AdaptivTypography.body.copyWith(fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 8),
                             Text(
@@ -232,7 +222,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                         children: [
                                           Text(
                                             activityType ?? 'Activity',
-                                            style: AdaptivTypography.bodyBold,
+                                            style: AdaptivTypography.body.copyWith(fontWeight: FontWeight.bold),
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
@@ -242,7 +232,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                           const SizedBox(height: 8),
                                           Row(
                                             children: [
-                                              const Icon(Icons.timer, size: 16, color: AdaptivColors.neutral500),
+                                              Icon(Icons.timer, size: 16, color: AdaptivColors.text500),
                                               const SizedBox(width: 4),
                                               Text(
                                                 _formatDuration(duration),
@@ -260,7 +250,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                                 Text(
                                                   '(Peak: $peakHr)',
                                                   style: AdaptivTypography.caption.copyWith(
-                                                    color: AdaptivColors.neutral500,
+                                                    color: AdaptivColors.text500,
                                                   ),
                                                 ),
                                               ],

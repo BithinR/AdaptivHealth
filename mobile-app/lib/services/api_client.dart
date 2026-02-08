@@ -366,7 +366,7 @@ class ApiClient {
   }
 
   /// Get my activity history
-  Future<Map<String, dynamic>> getActivities({
+  Future<List<dynamic>> getActivities({
     int limit = 50,
     int offset = 0,
   }) async {
@@ -378,7 +378,7 @@ class ApiClient {
           'offset': offset,
         },
       );
-      return response.data;
+      return response.data as List<dynamic>;
     } on DioException catch (e) {
       throw _handleDioError(e);
     }
