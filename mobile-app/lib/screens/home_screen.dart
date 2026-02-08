@@ -99,11 +99,34 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AdaptivColors.background50,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: AdaptivColors.white,
+        backgroundColor: Colors.white,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                AdaptivColors.primaryUltralight,
+              ],
+            ),
+          ),
+        ),
         title: Row(
           children: [
-            const Icon(Icons.favorite, color: AdaptivColors.critical),
-            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AdaptivColors.critical.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.favorite,
+                color: AdaptivColors.critical,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
             Text(
               'Adaptiv Health',
               style: GoogleFonts.dmSans(
@@ -115,12 +138,19 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            color: AdaptivColors.text700,
-            onPressed: () {
-              // TODO: Navigate to notifications
-            },
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: AdaptivColors.primaryUltralight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.notifications_none),
+              color: AdaptivColors.primary,
+              onPressed: () {
+                // TODO: Navigate to notifications
+              },
+            ),
           ),
         ],
       ),
@@ -149,11 +179,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
         currentIndex: _selectedIndex,
+        selectedItemColor: AdaptivColors.primary,
+        unselectedItemColor: AdaptivColors.text500,
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
           });
         },
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        elevation: 8,
       ),
     );
   }
@@ -221,51 +256,128 @@ class _HomeScreenState extends State<HomeScreen> {
         final riskLevel = risk['risk_level'] ?? 'low';
         final riskScore = risk['risk_score'] ?? 0.23;
 
-        return SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Greeting
-                Text(
-                  'Good morning, $firstName',
-                  style: AdaptivTypography.screenTitle,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  riskLevel.toLowerCase() == 'high'
-                      ? 'Stay calm — your heart is working hard'
-                      : 'Your heart is looking good today',
-                  style: AdaptivTypography.caption,
-                ),
-                const SizedBox(height: 32),
+        return Container(
+          // Appealing gradient background for patient dashboard
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFf0f9ff), // Very light blue
+                Color(0xFFdbeafe), // Light blue
+                Color(0xFFbfdbfe), // Soft blue
+              ],
+            ),
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Greeting card with glass effect
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AdaptivColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.waving_hand,
+                                color: Colors.amber,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Good morning, $firstName',
+                                    style: AdaptivTypography.screenTitle,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    riskLevel.toLowerCase() == 'high'
+                                        ? 'Stay calm — your heart is working hard'
+                                        : 'Your heart is looking good today',
+                                    style: AdaptivTypography.caption.copyWith(
+                                      color: AdaptivColors.text600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
 
-                // HERO HEART RATE RING
-                Center(
-                  child: _buildHeartRateRing(
-                    heartRate: heartRate,
-                    riskLevel: riskLevel,
-                    maxSafeHR: 150, // Typical for healthy adults
+                // HERO HEART RATE RING - Enhanced design
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Center(
+                        child: _buildHeartRateRing(
+                          heartRate: heartRate,
+                          riskLevel: riskLevel,
+                          maxSafeHR: 150,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Activity phase & zone
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildStatusBadge(
+                            _getRiskZoneLabel(heartRate),
+                            Icons.directions_run,
+                            AdaptivColors.primary,
+                          ),
+                          _buildStatusBadge(
+                            _getRiskStatus(riskLevel),
+                            Icons.shield_outlined,
+                            AdaptivColors.getRiskColor(riskLevel),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 32),
-
-                // Activity phase & zone
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _getRiskZoneLabel(heartRate),
-                      style: AdaptivTypography.body,
-                    ),
-                    Text(
-                      _getRiskStatus(riskLevel),
-                      style: AdaptivTypography.body,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
                 // Secondary Vitals Grid
                 _buildVitalsGrid(
@@ -275,33 +387,70 @@ class _HomeScreenState extends State<HomeScreen> {
                   riskLevel: riskLevel,
                   riskScore: riskScore,
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
                 // Heart Rate Sparkline
                 _buildHeartRateSparkline(),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
                 // AI Recommendation Card
                 _buildRecommendationCard(riskLevel),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
-                // Refresh button
+                // Refresh button with enhanced design
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
+                  child: ElevatedButton.icon(
                     onPressed: () {
                       setState(() {
                         _loadData();
                       });
                     },
-                    child: const Text('Refresh Data'),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Refresh Data'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: AdaptivColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
                   ),
                 ),
+                const SizedBox(height: 16),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  // Helper method for status badges
+  Widget _buildStatusBadge(String label, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AdaptivTypography.caption.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -315,53 +464,107 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Column(
       children: [
-        // Heart rate ring visualization (see ROADMAP.md for UI improvements)
-        Container(
-          width: 200,
-          height: 200,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: ringColor,
-              width: 12,
-            ),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  heartRate.toString(),
-                  style: AdaptivTypography.heroNumber.copyWith(
-                    color: ringColor,
+        // Heart rate ring visualization with enhanced design
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            // Outer glow effect
+            Container(
+              width: 220,
+              height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: ringColor.withOpacity(0.3),
+                    blurRadius: 30,
+                    spreadRadius: 5,
                   ),
+                ],
+              ),
+            ),
+            // Main ring
+            Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: ringColor,
+                  width: 12,
                 ),
-                Text(
-                  'BPM',
-                  style: AdaptivTypography.heroUnit,
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.white,
+                    ringColor.withOpacity(0.05),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Row(
+              ),
+              child: Center(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AdaptivColors.stable,
+                    // Animated heart icon
+                    Icon(
+                      Icons.favorite,
+                      color: ringColor,
+                      size: 32,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      heartRate.toString(),
+                      style: AdaptivTypography.heroNumber.copyWith(
+                        color: ringColor,
+                        fontSize: 48,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(width: 6),
                     Text(
-                      'Live',
-                      style: AdaptivTypography.caption,
+                      'BPM',
+                      style: AdaptivTypography.heroUnit.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AdaptivColors.stable.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AdaptivColors.stable,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AdaptivColors.stable.withOpacity(0.5),
+                                  blurRadius: 4,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Live',
+                            style: AdaptivTypography.caption.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ],
     );
@@ -436,7 +639,18 @@ class _HomeScreenState extends State<HomeScreen> {
     required String status,
     required Color statusColor,
   }) {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -445,28 +659,50 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  icon,
-                  color: statusColor,
-                  size: 20,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: statusColor,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: AdaptivTypography.overline,
+                Expanded(
+                  child: Text(
+                    label,
+                    style: AdaptivTypography.overline.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),
+            const SizedBox(height: 12),
             Text(
               value,
               style: AdaptivTypography.heroNumber.copyWith(
                 fontSize: 28,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            Text(
-              status,
-              style: AdaptivTypography.caption.copyWith(
-                color: statusColor,
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                status,
+                style: AdaptivTypography.caption.copyWith(
+                  color: statusColor,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -476,25 +712,67 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeartRateSparkline() {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Heart Rate Today',
-              style: AdaptivTypography.cardTitle,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AdaptivColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.show_chart,
+                    color: AdaptivColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Heart Rate Today',
+                  style: AdaptivTypography.cardTitle.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             Container(
               height: 100,
               decoration: BoxDecoration(
-                color: AdaptivColors.background50,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AdaptivColors.primary.withOpacity(0.1),
+                    AdaptivColors.primary.withOpacity(0.05),
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Center(
-                  child: Text('Trend chart - coming soon'),
+              child: Center(
+                child: Text(
+                  'Trend chart - coming soon',
+                  style: AdaptivTypography.caption.copyWith(
+                    color: AdaptivColors.text600,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -503,7 +781,10 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text('6AM', style: AdaptivTypography.caption),
                 Text('12PM', style: AdaptivTypography.caption),
-                Text('Now', style: AdaptivTypography.caption),
+                Text('Now', style: AdaptivTypography.caption.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AdaptivColors.primary,
+                )),
               ],
             ),
           ],
@@ -515,46 +796,80 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildRecommendationCard(String riskLevel) {
     final isHighRisk = riskLevel.toLowerCase() == 'high';
 
-    return Card(
-      color: AdaptivColors.primaryUltralight,
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AdaptivColors.primary.withOpacity(0.15),
+            AdaptivColors.primary.withOpacity(0.08),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AdaptivColors.primary.withOpacity(0.3),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AdaptivColors.primary.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.directions_walk,
-                  color: AdaptivColors.primary,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isHighRisk
-                            ? 'Rest recommended'
-                            : '30-min walk recommended',
-                        style: AdaptivTypography.cardTitle,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isHighRisk
-                            ? 'Your recovery score is low. Take it easy today.'
-                            : 'Your recovery score is good enough for light activity.',
-                        style: AdaptivTypography.caption,
-                      ),
-                    ],
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
                   ),
-                ),
-                const Icon(
-                  Icons.arrow_forward,
-                  color: AdaptivColors.primary,
-                ),
-              ],
+                ],
+              ),
+              child: Icon(
+                isHighRisk ? Icons.bed : Icons.directions_walk,
+                color: AdaptivColors.primary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isHighRisk
+                        ? 'Rest recommended'
+                        : '30-min walk recommended',
+                    style: AdaptivTypography.cardTitle.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isHighRisk
+                        ? 'Your recovery score is low. Take it easy today.'
+                        : 'Your recovery score is good enough for light activity.',
+                    style: AdaptivTypography.caption.copyWith(
+                      color: AdaptivColors.text600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: AdaptivColors.primary,
+              size: 16,
             ),
           ],
         ),
