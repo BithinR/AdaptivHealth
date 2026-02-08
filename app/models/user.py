@@ -22,13 +22,11 @@ class UserRole(str, enum.Enum):
     """
     User roles matching SRS Section 2.2.
     - PATIENT: View own data, receive recommendations
-    - CAREGIVER: Limited access to patient data
     - CLINICIAN: View patient data, manage care
     - ADMIN: Full system access
     """
     PATIENT = "patient"
     CLINICIAN = "clinician"
-    CAREGIVER = "caregiver"
     ADMIN = "admin"
 
 

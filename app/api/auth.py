@@ -93,10 +93,10 @@ def authenticate_user(db: Session, email: str, password: str) -> User:
         auth_cred.failed_login_attempts += 1
         
         # Lock account if threshold exceeded
-        # DESIGN: Locks for N minutes after M failed attempts
+        # DESIGN: Locks for 15 minutes after 3 failed attempts (NIST standard)
         # Gives user time to recover password before trying again
-        if auth_cred.failed_login_attempts >= settings.max_login_attempts:
-            auth_cred.locked_until = datetime.now(timezone.utc) + timedelta(minutes=settings.lockout_duration_minutes)
+        if auth_cred.failed_login_attempts >= 3:
+            auth_cred.locked_until = datetime.now(timezone.utc) + timedelta(minutes=15)
             logger.warning(f"Account locked for user {user.user_id} due to failed attempts")
         
         db.commit()
@@ -240,10 +240,11 @@ def get_current_doctor_user(current_user: User = Depends(get_current_user)) -> U
 @router.post("/register", response_model=UserResponse)
 async def register_user(
     user_data: UserCreate,
+    current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
-    Register a new user account.
+    Register a new user account. Admin access only.
     
     DESIGN:
     - Email must be unique (prevents duplicate accounts)
