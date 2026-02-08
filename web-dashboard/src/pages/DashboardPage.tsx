@@ -78,6 +78,15 @@ const DashboardPage: React.FC = () => {
           api.getVitalSignsSummary(),
         ]);
 
+      console.log('Dashboard data loaded:', {
+        user,
+        usersCount: usersList.total,
+        usersArray: usersList.users.length,
+        statsResponse,
+        alertsResponse,
+        vitalsSummary,
+      });
+
       setCurrentUser(user);
       setAlertStats(statsResponse);
       setRecentAlerts(alertsResponse.alerts ?? []);

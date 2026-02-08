@@ -6,89 +6,46 @@ and risk level. Clinicians can search for a patient or filter by risk level.
 Click on a patient to see detailed information.
 */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search } from 'lucide-react';
+import { api } from '../services/api';
+import { User } from '../types';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import StatusBadge, { riskToStatus } from '../components/common/StatusBadge';
-
-interface Patient {
-  id: number;
-  name: string;
-  age: number;
-  gender: string;
-  riskLevel: 'low' | 'moderate' | 'high';
-  lastReading: string;
-  heartRate: number;
-  device: string;
-}
-
-// Mock patient data
-const MOCK_PATIENTS: Patient[] = [
-  {
-    id: 1,
-    name: 'Robert Anderson',
-    age: 68,
-    gender: 'Male',
-    riskLevel: 'high',
-    lastReading: '8 min ago',
-    heartRate: 112,
-    device: 'Fitbit Charge 6',
-  },
-  {
-    id: 2,
-    name: 'Sarah Mitchell',
-    age: 55,
-    gender: 'Female',
-    riskLevel: 'moderate',
-    lastReading: '34 min ago',
-    heartRate: 94,
-    device: 'Apple Watch',
-  },
-  {
-    id: 3,
-    name: 'James Thompson',
-    age: 72,
-    gender: 'Male',
-    riskLevel: 'low',
-    lastReading: '1 hour ago',
-    heartRate: 68,
-    device: 'Withings Watch',
-  },
-  {
-    id: 4,
-    name: 'Emily Rodriguez',
-    age: 61,
-    gender: 'Female',
-    riskLevel: 'moderate',
-    lastReading: '2 hours ago',
-    heartRate: 88,
-    device: 'Fitbit Versa 4',
-  },
-  {
-    id: 5,
-    name: 'Michael Chen',
-    age: 59,
-    gender: 'Male',
-    riskLevel: 'low',
-    lastReading: '3 hours ago',
-    heartRate: 72,
-    device: 'Garmin Epix',
-  },
-];
 
 const PatientsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRisk, setFilterRisk] = useState<'all' | 'low' | 'moderate' | 'high'>('all');
+  const [patients, setPatients] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredPatients = MOCK_PATIENTS.filter((patient) => {
+  useEffect(() => {
+    loadPatients();
+  }, []);
+
+  const loadPatients = async () => {
+    try {
+      const usersList = await api.getAllUsers(1, 200);
+      console.log('Loaded patients:', usersList);
+      setPatients(usersList.users);
+    } catch (error) {
+      console.error('Error loading patients:', error);
+      alert('Failed to load patients. Please make sure you are logged in.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredPatients = patients.filter((patient) => {
     const matchesSearch =
-      patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.id.toString().includes(searchTerm);
-    const matchesFilter = filterRisk === 'all' || patient.riskLevel === filterRisk;
-    return matchesSearch && matchesFilter;
+      patient.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.user_id.toString().includes(searchTerm);
+    // TODO: Add risk level filtering once we have risk data
+    // const matchesFilter = filterRisk === 'all' || patient.riskLevel === filterRisk;
+    return matchesSearch;
   });
 
   return (
@@ -239,10 +196,14 @@ const PatientsPage: React.FC = () => {
           </div>
 
           {/* Table Rows */}
-          {filteredPatients.length > 0 ? (
+          {loading ? (
+            <div style={{ padding: '48px', textAlign: 'center', color: colors.neutral['500'] }}>
+              Loading patients...
+            </div>
+          ) : filteredPatients.length > 0 ? (
             filteredPatients.map((patient, idx) => (
               <div
-                key={patient.id}
+                key={patient.user_id}
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '200px 100px 100px 120px 100px 150px 80px',
@@ -254,19 +215,19 @@ const PatientsPage: React.FC = () => {
                 }}
               >
                 <div>
-                  <div style={{ ...typography.body, fontWeight: 600 }}>{patient.name}</div>
+                  <div style={{ ...typography.body, fontWeight: 600 }}>{patient.full_name}</div>
                 </div>
-                <div style={typography.body}>{patient.age}</div>
-                <div style={typography.body}>{patient.gender}</div>
+                <div style={typography.body}>{patient.age || 'N/A'}</div>
+                <div style={typography.body}>{patient.gender || 'N/A'}</div>
                 <div>
-                  <StatusBadge status={riskToStatus(patient.riskLevel)} size="sm" />
+                  <StatusBadge status="stable" size="sm" />
                 </div>
                 <div style={{ ...typography.body, fontWeight: 600 }}>
-                  {patient.heartRate} <span style={{ ...typography.caption, fontWeight: 400 }}>BPM</span>
+                  -- <span style={{ ...typography.caption, fontWeight: 400 }}>BPM</span>
                 </div>
-                <div style={typography.caption}>{patient.lastReading}</div>
+                <div style={typography.caption}>--</div>
                 <button
-                  onClick={() => navigate(`/patients/${patient.id}`)}
+                  onClick={() => navigate(`/patients/${patient.user_id}`)}
                   style={{
                     padding: '6px 12px',
                     borderRadius: '6px',
@@ -305,9 +266,9 @@ const PatientsPage: React.FC = () => {
         {/* Summary */}
         <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'space-between' }}>
           <p style={typography.caption}>
-            Showing {filteredPatients.length} of {MOCK_PATIENTS.length} patients
+            Showing {filteredPatients.length} of {patients.length} patients
           </p>
-          <p style={typography.caption}>Total Active Patients: {MOCK_PATIENTS.length}</p>
+          <p style={typography.caption}>Total Active Patients: {patients.filter(p => p.is_active).length}</p>
         </div>
       </main>
     </div>

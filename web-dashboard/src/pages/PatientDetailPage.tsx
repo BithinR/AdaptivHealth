@@ -79,6 +79,8 @@ const PatientDetailPage: React.FC = () => {
 
       const days = rangeToDays(timeRange);
 
+      console.log('Loading patient data for user ID:', userId, 'days:', days);
+
       const [user, vitals, risk, rec, alertsResponse, activitiesResponse, history] =
         await Promise.all([
           api.getUserById(userId),
@@ -90,6 +92,16 @@ const PatientDetailPage: React.FC = () => {
           api.getVitalSignsHistoryForUser(userId, days, 1, 100),
         ]);
 
+      console.log('Patient data loaded:', {
+        user,
+        vitals,
+        risk,
+        rec,
+        alerts: alertsResponse.alerts?.length,
+        activities: activitiesResponse.activities?.length,
+        historyCount: history.vitals?.length,
+      });
+
       setPatient(user);
       setLatestVitals(vitals);
       setRiskAssessment(risk);
@@ -99,6 +111,7 @@ const PatientDetailPage: React.FC = () => {
       setVitalsHistory(history);
     } catch (error) {
       console.error('Error loading patient data:', error);
+      alert(`Failed to load patient data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
