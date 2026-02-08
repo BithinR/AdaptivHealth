@@ -177,7 +177,7 @@ This document explains how the AdaptivHealth mobile app UI enhancements adhere t
 - ✅ **Vertical Scroll**: Natural gesture
 
 ### Performance
-- ✅ **Native Gradients**: No image loading delays
+- ✅ **Optimized Images**: Lightweight local assets (< 25 KB)
 - ✅ **Efficient Rendering**: Flutter's optimized rendering
 - ✅ **Lazy Loading**: Data loaded as needed
 - ✅ **Graceful Degradation**: Works even if API slow

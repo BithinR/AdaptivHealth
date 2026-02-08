@@ -40,3 +40,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  
+  # Assets
+  assets:
+    - assets/images/login_background.jpg
+    - assets/images/dashboard_background.jpg

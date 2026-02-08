@@ -354,7 +354,7 @@ Container(
 
 ### Efficient Rendering
 
-1. **Native Gradients**: No image assets
+1. **Optimized Images**: Lightweight JPEG assets (< 25 KB each)
 2. **Minimal Shadows**: Simple blur values
 3. **Static Layouts**: No complex calculations
 4. **Lazy Loading**: Load data as needed

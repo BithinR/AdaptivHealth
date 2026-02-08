@@ -234,7 +234,7 @@
 
 ## Performance Considerations
 
-- **Native gradients**: No image files needed
+- **Optimized images**: Lightweight JPEG assets (< 25 KB each)
 - **Minimal shadows**: Simple blur values
 - **Efficient rendering**: Flutter-native effects
 - **Scalable**: Works on all screen sizes

@@ -15,7 +15,8 @@
 **Theme**: Professional, Trustworthy, Medical
 
 **Key Changes**:
-- Professional blue gradient background (deep → light blue)
+- Professional background image with gradient (deep → light blue)
+- Image file: `assets/images/login_background.jpg` (1080x1920, 21 KB)
 - Enhanced logo (100x100) with shadow effect
 - Glass morphism form card with semi-transparent white background
 - Filled input fields with better contrast
@@ -25,10 +26,11 @@
 
 **Technical Details**:
 ```dart
-Background Gradient: 
-  - Deep Blue (#1e3a8a)
-  - Primary Blue (#2563EB) 
-  - Light Blue (#3b82f6)
+Background Image: 
+  - File: assets/images/login_background.jpg
+  - Size: 1080x1920 px
+  - Colors: Deep Blue (#1e3a8a) → Primary Blue (#2563EB) → Light Blue (#3b82f6)
+  - Implementation: AssetImage with BoxFit.cover
 
 Form Card:
   - White 95% opacity
@@ -45,7 +47,8 @@ Buttons:
 **Theme**: Calming, Wellness, Health Monitoring
 
 **Key Changes**:
-- Calming gradient background (light blue palette)
+- Calming background image with gradient (light blue palette)
+- Image file: `assets/images/dashboard_background.jpg` (1080x1920, 16 KB)
 - Enhanced greeting card with icon and glass effect
 - Redesigned heart rate ring with:
   - Glow effects
@@ -65,9 +68,11 @@ Buttons:
 
 **Technical Details**:
 ```dart
-Background Gradient:
-  - Very Light Blue (#f0f9ff)
-  - Light Blue (#dbeafe)
+Background Image:
+  - File: assets/images/dashboard_background.jpg
+  - Size: 1080x1920 px
+  - Colors: Very Light Blue (#f0f9ff) → Light Blue (#dbeafe) → Soft Blue (#bfdbfe)
+  - Implementation: AssetImage with BoxFit.cover
   - Soft Blue (#bfdbfe)
 
 Heart Rate Ring:
@@ -235,7 +240,8 @@ Glow: 0px 0px 30px, color with 30% opacity
 - ✅ Multiple status indicators
 
 ### Technical Improvements
-- ✅ No image assets (gradients instead)
+- ✅ Local image assets (optimized JPEG files)
+- ✅ Small file sizes (< 25 KB per image)
 - ✅ Better performance
 - ✅ Responsive design
 - ✅ Consistent theming
@@ -288,8 +294,8 @@ Glow: 0px 0px 30px, color with 30% opacity
 2. `home_screen.dart` - 320 lines changed
 
 ### Performance Considerations
-- ✅ No image loading overhead
-- ✅ Native gradient rendering
+- ✅ Optimized image assets (< 25 KB each)
+- ✅ Efficient image rendering
 - ✅ Efficient widget structure
 - ✅ Minimal rebuilds
 - ✅ Lazy data loading

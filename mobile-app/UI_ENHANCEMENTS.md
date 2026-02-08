@@ -9,7 +9,8 @@ This document outlines the UI/UX enhancements made to the AdaptivHealth mobile a
 
 #### Background Design
 - **Before**: Plain white background
-- **After**: Professional gradient background (deep blue → primary blue → light blue)
+- **After**: Professional background image with gradient (deep blue → primary blue → light blue)
+- **Implementation**: Local image file `assets/images/login_background.jpg` (21 KB)
 - **HCI Principle**: Creates visual interest and establishes brand identity
 
 #### Logo & Branding
@@ -42,7 +43,8 @@ This document outlines the UI/UX enhancements made to the AdaptivHealth mobile a
 
 #### Background Design
 - **Before**: Plain off-white background
-- **After**: Calming gradient (very light blue → light blue → soft blue)
+- **After**: Calming background image with gradient (very light blue → light blue → soft blue)
+- **Implementation**: Local image file `assets/images/dashboard_background.jpg` (16 KB)
 - **Purpose**: Creates an appealing, calming atmosphere for health monitoring
 - **HCI Principle**: Color psychology - blue conveys trust and calmness
 
