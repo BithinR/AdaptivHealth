@@ -60,7 +60,8 @@ class _AdaptivHealthAppState extends State<AdaptivHealthApp> {
     });
   }
 
-  void _handleLogout() {
+  /// Handles logout from any screen. Call this to return to login.
+  void handleLogout() {
     // User logged out. Show the Login screen again.
     setState(() {
       _isLoggedIn = false;

@@ -419,7 +419,8 @@ class ActiveWorkoutScreen extends StatefulWidget {
 }
 
 class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
-  late Stream<Map<String, dynamic>> _vitalStream;
+  // Note: _vitalStream will be used when WebSocket integration is added
+  // late Stream<Map<String, dynamic>> _vitalStream;
   int _currentHR = 0;
   int _maxHR = 0;
   bool _isEndingWorkout = false;

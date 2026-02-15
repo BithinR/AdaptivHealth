@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../services/api_client.dart';
+import 'activity_detail_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   final ApiClient apiClient;
@@ -198,11 +199,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             ),
                             child: InkWell(
                               onTap: () {
-                                // TODO: Navigate to session detail page
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Session detail coming soon'),
-                                    duration: Duration(seconds: 1),
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ActivityDetailScreen(
+                                      activity: activity,
+                                    ),
                                   ),
                                 );
                               },
@@ -243,7 +245,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                           const SizedBox(height: 8),
                                           Row(
                                             children: [
-                                              Icon(Icons.timer, size: 16, color: AdaptivColors.text500),
+                                              const Icon(Icons.timer, size: 16, color: AdaptivColors.text500),
                                               const SizedBox(width: 4),
                                               Text(
                                                 _formatDuration(duration),

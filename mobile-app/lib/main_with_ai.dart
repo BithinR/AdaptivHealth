@@ -11,12 +11,13 @@ This version includes:
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'core/api_client.dart';
+import 'core/api_client.dart' as core;
 import 'core/token_storage.dart';
 import 'features/ai/ai_api.dart';
 import 'features/ai/ai_store.dart';
 import 'screens/ai_home_screen.dart';
 import 'screens/login_screen.dart';
+import 'services/api_client.dart' as services;
 import 'theme/theme.dart';
 
 void main() {
@@ -24,10 +25,13 @@ void main() {
   final tokenStorage = TokenStorage();
   
   // IMPORTANT: Change this to your backend IP/domain
-  final apiClient = ApiClient(
+  final apiClient = core.ApiClient(
     tokenStorage: tokenStorage,
     baseUrl: 'http://YOUR_IP:8000/api/v1', // <-- UPDATE THIS
   );
+
+  // Create services ApiClient for screens that require it
+  final servicesApiClient = services.ApiClient();
 
   final aiApi = AiApi(apiClient.dio);
 
@@ -39,6 +43,7 @@ void main() {
       ],
       child: AdaptivHealthApp(
         apiClient: apiClient,
+        servicesApiClient: servicesApiClient,
         tokenStorage: tokenStorage,
       ),
     ),
@@ -46,12 +51,14 @@ void main() {
 }
 
 class AdaptivHealthApp extends StatefulWidget {
-  final ApiClient apiClient;
+  final core.ApiClient apiClient;
+  final services.ApiClient servicesApiClient;
   final TokenStorage tokenStorage;
 
   const AdaptivHealthApp({
     super.key,
     required this.apiClient,
+    required this.servicesApiClient,
     required this.tokenStorage,
   });
 
@@ -81,7 +88,8 @@ class _AdaptivHealthAppState extends State<AdaptivHealthApp> {
     });
   }
 
-  void _handleLogout() async {
+  /// Handles user logout, clears token and returns to login screen.
+  void handleLogout() async {
     await widget.tokenStorage.clearToken();
     setState(() {
       _isLoggedIn = false;
@@ -99,7 +107,7 @@ class _AdaptivHealthAppState extends State<AdaptivHealthApp> {
           : _isLoggedIn!
               ? const AiHomeScreen()
               : LoginScreen(
-                  apiClient: widget.apiClient,
+                  apiClient: widget.servicesApiClient,
                   onLoginSuccess: _handleLoginSuccess,
                 ),
       debugShowCheckedModeBanner: false,

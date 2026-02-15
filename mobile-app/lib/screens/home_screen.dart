@@ -10,10 +10,14 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../services/api_client.dart';
-import 'workout_screen.dart';
+import '../widgets/widgets.dart';
+import 'fitness_plans_screen.dart';
 import 'recovery_screen.dart';
-import 'history_screen.dart';
+import 'health_screen.dart';
 import 'profile_screen.dart';
+import 'nutrition_screen.dart';
+import 'chatbot_screen.dart';
+import 'doctor_messaging_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final ApiClient apiClient;
@@ -101,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         backgroundColor: Colors.white,
         flexibleSpace: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -158,24 +162,44 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.fitness_center),
-            label: 'Workout',
+            icon: Icon(Icons.fitness_center_outlined),
+            activeIcon: Icon(Icons.fitness_center),
+            label: 'Fitness',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.spa),
+            icon: Icon(Icons.spa_outlined),
+            activeIcon: Icon(Icons.spa),
             label: 'Recovery',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: 'History',
+            icon: Icon(Icons.monitor_heart_outlined),
+            activeIcon: Icon(Icons.monitor_heart),
+            label: 'Health',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
             label: 'Profile',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.restaurant_outlined),
+            activeIcon: Icon(Icons.restaurant),
+            label: 'Nutrition',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            activeIcon: Icon(Icons.chat_bubble),
+            label: 'Chatbot',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.message_outlined),
+            activeIcon: Icon(Icons.message),
+            label: 'Doctor Messaging',
           ),
         ],
         currentIndex: _selectedIndex,
@@ -198,13 +222,13 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         return _buildHomeTab();
       case 1:
-        return WorkoutScreen(apiClient: widget.apiClient);
+        return FitnessPlansScreen(apiClient: widget.apiClient);
       case 2:
         return RecoveryScreen(apiClient: widget.apiClient);
       case 3:
-        return HistoryScreen(apiClient: widget.apiClient);
+        return HealthScreen(apiClient: widget.apiClient);
       case 4:
-        return ProfileScreen(apiClient: widget.apiClient);
+        return DoctorMessagingScreen();
       default:
         return _buildHomeTab();
     }
@@ -287,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 color: AdaptivColors.primary.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Icon(
+                              child: const Icon(
                                 Icons.waving_hand,
                                 color: Colors.amber,
                                 size: 24,
@@ -376,6 +400,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // Quick Actions
+                _buildQuickActions(),
+                const SizedBox(height: 24),
+
+                // Recent Activity
+                _buildRecentActivity(),
+                const SizedBox(height: 24),
+
                 // Heart Rate Sparkline
                 _buildHeartRateSparkline(),
                 const SizedBox(height: 24),
@@ -447,7 +479,8 @@ class _HomeScreenState extends State<HomeScreen> {
     required String riskLevel,
     required int maxSafeHR,
   }) {
-    final fillPercentage = (heartRate / maxSafeHR).clamp(0.0, 1.0);
+    // Calculate fill percentage for potential future progress ring visualization
+    final _ = (heartRate / maxSafeHR).clamp(0.0, 1.0);
     final ringColor = AdaptivColors.getRiskColor(riskLevel);
 
     return Column(
@@ -565,136 +598,333 @@ class _HomeScreenState extends State<HomeScreen> {
     required String riskLevel,
     required double riskScore,
   }) {
-    return GridView.count(
-      crossAxisCount: 2,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+    // Sample trend data for visualization
+    final hrTrend = [68.0, 72.0, 75.0, 71.0, 73.0, 72.0];
+    final spo2Trend = [97.0, 98.0, 98.0, 97.0, 98.0, spo2.toDouble()];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildVitalCard(
-          icon: Icons.air,
-          label: 'SpO2',
-          value: '$spo2%',
-          status: spo2 < 90
-              ? 'Critical'
-              : spo2 < 95
-              ? 'Low'
-              : 'Normal',
-          statusColor: spo2 < 90
-              ? AdaptivColors.critical
-              : spo2 < 95
-              ? AdaptivColors.warning
-              : AdaptivColors.stable,
+        // Section header
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              Text(
+                'Vitals',
+                style: AdaptivTypography.subtitle1.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'View All',
+                style: AdaptivTypography.label.copyWith(
+                  color: AdaptivColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
-        _buildVitalCard(
-          icon: Icons.favorite,
-          label: 'Blood Pressure',
-          value: '$systolicBp/$diastolicBp',
-          status: systolicBp > 140
-              ? 'High'
-              : systolicBp > 130
-              ? 'Elevated'
-              : 'Normal',
-          statusColor: systolicBp > 140
-              ? AdaptivColors.critical
-              : systolicBp > 130
-              ? AdaptivColors.warning
-              : AdaptivColors.stable,
+        // Compact horizontal scroll of VitalCards
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              VitalCard(
+                icon: Icons.air,
+                label: 'SpO2',
+                value: spo2.toString(),
+                unit: '%',
+                status: spo2 < 90
+                    ? VitalStatus.critical
+                    : spo2 < 95
+                        ? VitalStatus.warning
+                        : VitalStatus.safe,
+                trend: spo2Trend,
+                onTap: () {},
+              ),
+              const SizedBox(width: 12),
+              VitalCard(
+                icon: Icons.water_drop,
+                label: 'BP',
+                value: '$systolicBp/$diastolicBp',
+                unit: 'mmHg',
+                status: systolicBp > 140
+                    ? VitalStatus.critical
+                    : systolicBp > 130
+                        ? VitalStatus.warning
+                        : VitalStatus.safe,
+                onTap: () {},
+              ),
+              const SizedBox(width: 12),
+              VitalCard(
+                icon: Icons.timeline,
+                label: 'HRV',
+                value: '45',
+                unit: 'ms',
+                status: VitalStatus.safe,
+                trend: hrTrend,
+                onTap: () {},
+              ),
+              const SizedBox(width: 12),
+            ],
+          ),
         ),
-        _buildVitalCard(
-          icon: Icons.show_chart,
-          label: 'HRV',
-          value: '45ms',
-          status: 'Good',
-          statusColor: AdaptivColors.stable,
-        ),
-        _buildVitalCard(
-          icon: Icons.shield,
-          label: 'Risk Level',
-          value: riskLevel.toUpperCase(),
-          status: riskScore.toStringAsFixed(2),
-          statusColor: AdaptivColors.getRiskColor(riskLevel),
+        const SizedBox(height: 16),
+        // Risk badge row
+        Row(
+          children: [
+            RiskBadge(
+              level: _getRiskLevel(riskLevel),
+              size: RiskBadgeSize.medium,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'CV Score: ${(riskScore * 100).toInt()}',
+                style: AdaptivTypography.metricValueSmall.copyWith(
+                  color: AdaptivColors.text600,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildVitalCard({
+  RiskLevel _getRiskLevel(String riskLevel) {
+    switch (riskLevel.toLowerCase()) {
+      case 'critical':
+        return RiskLevel.critical;
+      case 'high':
+        return RiskLevel.high;
+      case 'elevated':
+        return RiskLevel.elevated;
+      case 'moderate':
+        return RiskLevel.moderate;
+      case 'low':
+        return RiskLevel.low;
+      default:
+        return RiskLevel.minimal;
+    }
+  }
+
+  Widget _buildQuickActions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Quick Actions',
+          style: AdaptivTypography.subtitle1.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildQuickActionButton(
+                icon: Icons.directions_run,
+                label: 'Start Workout',
+                color: AdaptivColors.primary,
+                onTap: () {
+                  setState(() => _selectedIndex = 1); // Go to Fitness
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildQuickActionButton(
+                icon: Icons.self_improvement,
+                label: 'Breathe',
+                color: const Color(0xFF9C27B0),
+                onTap: () {
+                  setState(() => _selectedIndex = 2); // Go to Recovery
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildQuickActionButton(
+                icon: Icons.monitor_heart,
+                label: 'Measure',
+                color: AdaptivColors.critical,
+                onTap: () {
+                  setState(() => _selectedIndex = 3); // Go to Health
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildQuickActionButton(
+                icon: Icons.chat_bubble_outline,
+                label: 'Ask Coach',
+                color: AdaptivColors.stable,
+                onTap: () {
+                  // TODO: Open AI coach
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('AI Coach coming soon!')),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActionButton({
     required IconData icon,
     required String label,
-    required String value,
-    required String status,
-    required Color statusColor,
+    required Color color,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: statusColor,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: AdaptivTypography.overline.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 8),
             Text(
-              value,
-              style: AdaptivTypography.heroNumber.copyWith(
-                fontSize: 28,
+              label,
+              style: AdaptivTypography.caption.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentActivity() {
+    // Demo recent activity data
+    final recentActivities = [
+      {
+        'icon': Icons.directions_walk,
+        'title': 'Morning Walk',
+        'subtitle': '30 min • 2.1 km',
+        'time': '2h ago',
+        'color': AdaptivColors.stable,
+      },
+      {
+        'icon': Icons.monitor_heart,
+        'title': 'Heart Rate Check',
+        'subtitle': '72 BPM - Normal',
+        'time': '4h ago',
+        'color': AdaptivColors.primary,
+      },
+      {
+        'icon': Icons.spa,
+        'title': 'Breathing Exercise',
+        'subtitle': '5 min session',
+        'time': 'Yesterday',
+        'color': const Color(0xFF9C27B0),
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Recent Activity',
+              style: AdaptivTypography.subtitle1.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(4),
-              ),
+            const Spacer(),
+            GestureDetector(
+              onTap: () {
+                setState(() => _selectedIndex = 3); // Go to Health
+              },
               child: Text(
-                status,
-                style: AdaptivTypography.caption.copyWith(
-                  color: statusColor,
+                'See All',
+                style: AdaptivTypography.label.copyWith(
+                  color: AdaptivColors.primary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        ...recentActivities.map((activity) => _buildActivityItem(
+          icon: activity['icon'] as IconData,
+          title: activity['title'] as String,
+          subtitle: activity['subtitle'] as String,
+          time: activity['time'] as String,
+          color: activity['color'] as Color,
+        )),
+      ],
+    );
+  }
+
+  Widget _buildActivityItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String time,
+    required Color color,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AdaptivColors.border300),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: AdaptivTypography.body.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: AdaptivTypography.caption.copyWith(
+                    color: AdaptivColors.text600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            time,
+            style: AdaptivTypography.caption,
+          ),
+        ],
       ),
     );
   }
@@ -725,7 +955,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: AdaptivColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.show_chart,
                     color: AdaptivColors.primary,
                     size: 20,
@@ -784,84 +1014,36 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildRecommendationCard(String riskLevel) {
     final isHighRisk = riskLevel.toLowerCase() == 'high';
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AdaptivColors.primary.withOpacity(0.15),
-            AdaptivColors.primary.withOpacity(0.08),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AdaptivColors.primary.withOpacity(0.3),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AdaptivColors.primary.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            'Recommended For You',
+            style: AdaptivTypography.subtitle1.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(
-                isHighRisk ? Icons.bed : Icons.directions_walk,
-                color: AdaptivColors.primary,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isHighRisk
-                        ? 'Rest recommended'
-                        : '30-min walk recommended',
-                    style: AdaptivTypography.cardTitle.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    isHighRisk
-                        ? 'Your recovery score is low. Take it easy today.'
-                        : 'Your recovery score is good enough for light activity.',
-                    style: AdaptivTypography.caption.copyWith(
-                      color: AdaptivColors.text600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: AdaptivColors.primary,
-              size: 16,
-            ),
-          ],
         ),
-      ),
+        RecommendationCard(
+          activityType: isHighRisk ? ActivityType.meditation : ActivityType.walking,
+          title: isHighRisk ? 'Rest & Recovery' : 'Morning Walk',
+          description: isHighRisk
+              ? 'Your recovery score is low. Take it easy today.'
+              : 'Light cardio to maintain your heart health.',
+          duration: Duration(minutes: isHighRisk ? 15 : 30),
+          targetHRZone: isHighRisk ? HRZone.resting : HRZone.light,
+          confidence: 0.87,
+          isPriority: true,
+          onStart: () {
+            // Navigate to workout
+          },
+          onDismiss: () {
+            // Dismiss recommendation
+          },
+        ),
+      ],
     );
   }
 }

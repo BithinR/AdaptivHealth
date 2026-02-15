@@ -2,7 +2,7 @@
 Recovery screen.
 
 This page helps the user cool down after a workout.
-It shows a recovery score and a simple breathing guide.
+It shows a recovery score, breathing exercises, and recovery metrics.
 */
 
 import 'package:flutter/material.dart';
@@ -10,6 +10,15 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/colors.dart';
 import '../theme/typography.dart';
 import '../services/api_client.dart';
+import '../widgets/widgets.dart';
+
+/// Breathing exercise types
+enum BreathingType {
+  relaxing478,   // 4-7-8 technique
+  box,           // Box breathing (4-4-4-4)
+  energizing,    // 4-2-4 technique
+  calm246,       // 2-4-6 technique
+}
 
 class RecoveryScreen extends StatefulWidget {
   final ApiClient apiClient;
@@ -27,6 +36,10 @@ class _RecoveryScreenState extends State<RecoveryScreen>
     with SingleTickerProviderStateMixin {
   late Future<Map<String, dynamic>> _sessionFuture;
   late AnimationController _breathingController;
+  
+  BreathingType _selectedBreathing = BreathingType.relaxing478;
+  String _breathingPhase = 'Ready';
+  bool _isBreathingActive = false;
 
   @override
   void initState() {
@@ -38,6 +51,41 @@ class _RecoveryScreenState extends State<RecoveryScreen>
       duration: const Duration(seconds: 9),
       vsync: this,
     );
+    
+    _breathingController.addListener(_updateBreathingPhase);
+  }
+
+  void _updateBreathingPhase() {
+    if (!_isBreathingActive) return;
+    
+    final value = _breathingController.value;
+    String newPhase;
+    
+    // Phases based on animation progress
+    if (value < 0.33) {
+      newPhase = 'Inhale';
+    } else if (value < 0.66) {
+      newPhase = 'Hold';
+    } else {
+      newPhase = 'Exhale';
+    }
+    
+    if (newPhase != _breathingPhase) {
+      setState(() => _breathingPhase = newPhase);
+    }
+  }
+
+  void _toggleBreathing() {
+    setState(() {
+      if (_isBreathingActive) {
+        _breathingController.stop();
+        _isBreathingActive = false;
+        _breathingPhase = 'Ready';
+      } else {
+        _breathingController.repeat();
+        _isBreathingActive = true;
+      }
+    });
   }
 
   Future<Map<String, dynamic>> _loadSessionData() {
@@ -51,13 +99,17 @@ class _RecoveryScreenState extends State<RecoveryScreen>
         'peak_heart_rate': 165,
         'recovery_time': 12,
         'calories_burned': 245,
+        'hrv': 48,
+        'resting_hr': 62,
+        'sleep_score': 82,
+        'stress_level': 'Low',
       },
     );
   }
 
   @override
   void dispose() {
-    // Clean up the animation controller.
+    _breathingController.removeListener(_updateBreathingPhase);
     _breathingController.dispose();
     super.dispose();
   }
